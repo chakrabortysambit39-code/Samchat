@@ -13,13 +13,16 @@ there's no login system. If you expose it beyond your own machine, put
 it behind a reverse proxy that adds authentication (e.g. Caddy with
 basic auth, or a VPN/tailnet) — see README.
 """
+import base64
 import os
+import secrets
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.middleware.base import BaseHTTPMiddleware
 
 import memory
 import reminders
@@ -33,6 +36,45 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
 app = FastAPI(title="Jarvis AI")
+
+# --------------------------------------------------------------------
+# Basic auth: protects every route (static UI + all /api/* endpoints).
+# Set APP_USERNAME / APP_PASSWORD in your environment (Render ->
+# Environment tab). If either is unset, auth is skipped — useful for
+# local dev, but make sure both are set in any public deployment.
+# --------------------------------------------------------------------
+APP_USERNAME = os.environ.get("APP_USERNAME")
+APP_PASSWORD = os.environ.get("APP_PASSWORD")
+
+
+class BasicAuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        if not APP_USERNAME or not APP_PASSWORD:
+            # Auth not configured — allow through (local/dev use).
+            return await call_next(request)
+
+        # Let uptime checks through without credentials.
+        if request.url.path == "/api/health":
+            return await call_next(request)
+
+        auth = request.headers.get("authorization")
+        if auth and auth.startswith("Basic "):
+            try:
+                decoded = base64.b64decode(auth.split(" ", 1)[1]).decode()
+                user, _, pw = decoded.partition(":")
+                if secrets.compare_digest(user, APP_USERNAME) and secrets.compare_digest(pw, APP_PASSWORD):
+                    return await call_next(request)
+            except Exception:
+                pass
+
+        return Response(
+            status_code=401,
+            headers={"WWW-Authenticate": 'Basic realm="Jarvis"'},
+            content="Unauthorized",
+        )
+
+
+app.add_middleware(BasicAuthMiddleware)
 
 # Same-origin by default (the UI is served from this app). CORS is only
 # relevant if you point a separately-hosted front-end at this API.
