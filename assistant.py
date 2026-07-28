@@ -5,6 +5,11 @@ deterministic actions like weather/news/reminders/files/system), falls
 back to ai.py for chit-chat, logs the exchange to memory, and optionally
 speaks the reply. This is the single entry point the GUI (or a CLI/voice
 loop) should call.
+
+An optional `user` (email) argument threads through to memory.py so
+chat/vision history is saved to that person's own private data folder
+instead of the single shared memory file. Pass None (or omit it) for
+single-user / CLI usage -- behavior is unchanged in that case.
 """
 import re
 
@@ -35,20 +40,26 @@ class Assistant:
     def __init__(self, speak_replies: bool = True):
         self.speak_replies = speak_replies
 
-    def process(self, text: str) -> str:
+    def process(self, text: str, user: str = None) -> str:
         text = (text or "").strip()
         if not text:
             return ""
 
         if _WEBCAM_TRIGGERS.search(text):
-            return self._capture_and_analyze(webcam.capture_frame(), source="webcam snapshot",
-                                               unavailable_msg="I can't access a webcam on this machine "
-                                                                "(no camera, or opencv-python isn't installed).")
+            return self._capture_and_analyze(
+                webcam.capture_frame(), source="webcam snapshot",
+                unavailable_msg="I can't access a webcam on this machine "
+                                 "(no camera, or opencv-python isn't installed).",
+                user=user,
+            )
         if _SCREEN_TRIGGERS.search(text):
-            return self._capture_and_analyze(screen.capture_screen(), source="screenshot",
-                                               unavailable_msg="I can't capture the screen on this machine.")
+            return self._capture_and_analyze(
+                screen.capture_screen(), source="screenshot",
+                unavailable_msg="I can't capture the screen on this machine.",
+                user=user,
+            )
 
-        memory.add_turn("user", text)
+        memory.add_turn("user", text, user=user)
         log.info("user: %s", text)
 
         try:
@@ -64,7 +75,7 @@ class Assistant:
                 log.exception("ai fallback failed")
                 response = "Sorry, I hit an error trying to respond to that."
 
-        memory.add_turn("assistant", response)
+        memory.add_turn("assistant", response, user=user)
         log.info("assistant: %s", response)
 
         if self.speak_replies:
@@ -72,23 +83,23 @@ class Assistant:
 
         return response
 
-    def _capture_and_analyze(self, image_bytes, source: str, unavailable_msg: str) -> str:
+    def _capture_and_analyze(self, image_bytes, source: str, unavailable_msg: str, user: str = None) -> str:
         if not image_bytes:
-            memory.add_turn("assistant", unavailable_msg)
+            memory.add_turn("assistant", unavailable_msg, user=user)
             if self.speak_replies:
                 speech.say(unavailable_msg)
             return unavailable_msg
-        return self.process_image(image_bytes, source=source)
+        return self.process_image(image_bytes, source=source, user=user)
 
-    def process_image(self, image_bytes: bytes, prompt: str = None, source: str = "image") -> str:
+    def process_image(self, image_bytes: bytes, prompt: str = None, source: str = "image", user: str = None) -> str:
         """Analyze an image (upload / webcam / screen capture) via
         vision.py, log it to memory like a normal turn, and optionally
-        speak the result — same contract as process()."""
+        speak the result -- same contract as process()."""
         if not image_bytes:
             return "I didn't get an image to look at."
 
         user_note = prompt.strip() if prompt else f"[sent a {source}]"
-        memory.add_turn("user", user_note)
+        memory.add_turn("user", user_note, user=user)
         log.info("user sent %s (prompt=%r)", source, prompt)
 
         try:
@@ -97,7 +108,7 @@ class Assistant:
             log.exception("vision analysis failed")
             response = "Something went wrong analyzing that image."
 
-        memory.add_turn("assistant", response)
+        memory.add_turn("assistant", response, user=user)
         log.info("assistant: %s", response)
 
         if self.speak_replies:
