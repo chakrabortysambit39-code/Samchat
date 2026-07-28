@@ -1,0 +1,15 @@
+# Requirements for the web version only (server.py), used for cloud
+# deploys like Render. Deliberately excludes desktop-only packages from
+# requirements.txt — customtkinter/pyttsx3/SpeechRecognition/opencv-python
+# either need a display, a mic/speakers, or system libraries a headless
+# container doesn't have, and none of them are used by server.py: voice
+# in/out and webcam capture happen client-side in the browser instead
+# (see static/app.js), and screen.py's ImageGrab / webcam.py's cv2 calls
+# already no-op safely when unavailable.
+fastapi
+uvicorn[standard]
+pydantic>=2
+python-multipart
+requests
+psutil
+pillow

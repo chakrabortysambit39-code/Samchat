@@ -1,0 +1,12 @@
+customtkinter
+pyttsx3
+SpeechRecognition
+pillow
+psutil
+requests
+opencv-python       # webcam capture for vision ("what am I looking at")
+fastapi
+uvicorn[standard]
+pydantic>=2
+python-multipart    # needed for FastAPI file uploads (/api/vision)
+cryptography       # only needed for gen_cert.py (self-signed HTTPS cert)

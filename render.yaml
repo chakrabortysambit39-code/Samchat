@@ -1,0 +1,24 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Connect this repo on Render and it reads this file automatically
+# ("New +" → "Blueprint"), or configure a Web Service manually with
+# the same build/start commands (see README).
+services:
+  - type: web
+    name: jarvis-ai
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-web.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false          # set this in the Render dashboard, not in git
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: GROQ_VISION_MODEL
+        value: qwen/qwen3.6-27b
+      - key: JARVIS_ASSISTANT_NAME
+        value: Jarvis
+      - key: JARVIS_CITY
+        value: Pune
+      - key: PYTHON_VERSION
+        value: 3.11.9
