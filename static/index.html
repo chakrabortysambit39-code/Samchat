@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Jarvis</title>
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <h1 id="assistantName">Jarvis</h1>
+      </div>
+      <div class="topbar-right">
+        <time id="clock" class="clock"></time>
+        <button id="helpBtn" class="ghost-btn" type="button">Help</button>
+        <button id="clearBtn" class="ghost-btn" type="button">Clear</button>
+        <button id="settingsBtn" class="ghost-btn" type="button">⚙ Settings</button>
+      </div>
+    </header>
+
+    <main class="chat-wrap">
+      <div id="chatLog" class="chat-log" aria-live="polite"></div>
+    </main>
+
+    <footer class="composer">
+      <div class="composer-row">
+        <button id="webcamBtn" class="icon-btn" type="button" title="Use webcam">📷</button>
+        <button id="screenBtn" class="icon-btn" type="button" title="Share screen">🖥</button>
+        <button id="uploadBtn" class="icon-btn" type="button" title="Upload image">📎</button>
+        <input id="fileInput" type="file" accept="image/*" hidden />
+
+        <input id="textInput" class="text-input" type="text"
+               placeholder="Ask Jarvis something, or type 'help'..." autocomplete="off" />
+
+        <button id="micBtn" class="icon-btn" type="button" title="Voice input">🎤</button>
+        <button id="sendBtn" class="send-btn" type="button">Send</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Webcam capture overlay -->
+  <div id="webcamModal" class="modal hidden">
+    <div class="modal-card">
+      <h2>Webcam</h2>
+      <video id="webcamVideo" autoplay playsinline></video>
+      <canvas id="webcamCanvas" hidden></canvas>
+      <div class="modal-actions">
+        <button id="webcamCapture" class="primary-btn" type="button">Capture</button>
+        <button id="webcamCancel" class="ghost-btn" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings modal -->
+  <div id="settingsModal" class="modal hidden">
+    <div class="modal-card">
+      <h2>Settings</h2>
+      <label>Your name
+        <input id="setUserName" type="text" />
+      </label>
+      <label>Assistant name
+        <input id="setAssistantName" type="text" />
+      </label>
+      <label>Default city
+        <input id="setCity" type="text" />
+      </label>
+      <label>News country code
+        <input id="setNewsCountry" type="text" maxlength="2" placeholder="in" />
+      </label>
+      <label>Groq API key
+        <input id="setGroqKey" type="password" placeholder="gsk_..." />
+      </label>
+      <label>Groq chat model
+        <input id="setGroqModel" type="text" placeholder="llama-3.3-70b-versatile" />
+      </label>
+      <div class="modal-actions">
+        <button id="settingsSave" class="primary-btn" type="button">Save</button>
+        <button id="settingsCancel" class="ghost-btn" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
