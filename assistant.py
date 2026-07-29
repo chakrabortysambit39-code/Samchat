@@ -40,7 +40,7 @@ class Assistant:
     def __init__(self, speak_replies: bool = True):
         self.speak_replies = speak_replies
 
-    def process(self, text: str, user: str = None) -> str:
+    def process(self, text: str, user: str = None, conversation_id: str = None) -> str:
         text = (text or "").strip()
         if not text:
             return ""
@@ -59,7 +59,7 @@ class Assistant:
                 user=user,
             )
 
-        memory.add_turn("user", text, user=user)
+        memory.add_turn("user", text, user=user, conversation_id=conversation_id)
         log.info("user: %s", text)
 
         try:
@@ -70,12 +70,12 @@ class Assistant:
 
         if response is None:
             try:
-                response = ai.reply(text)
+                response = ai.reply(text, user=user, conversation_id=conversation_id)
             except Exception as e:
                 log.exception("ai fallback failed")
                 response = "Sorry, I hit an error trying to respond to that."
 
-        memory.add_turn("assistant", response, user=user)
+        memory.add_turn("assistant", response, user=user, conversation_id=conversation_id)
         log.info("assistant: %s", response)
 
         if self.speak_replies:
@@ -83,15 +83,15 @@ class Assistant:
 
         return response
 
-    def _capture_and_analyze(self, image_bytes, source: str, unavailable_msg: str, user: str = None) -> str:
+    def _capture_and_analyze(self, image_bytes, source: str, unavailable_msg: str, user: str = None, conversation_id: str = None) -> str:
         if not image_bytes:
             memory.add_turn("assistant", unavailable_msg, user=user)
             if self.speak_replies:
                 speech.say(unavailable_msg)
             return unavailable_msg
-        return self.process_image(image_bytes, source=source, user=user)
+        return self.process_image(image_bytes, source=source, user=user, conversation_id=conversation_id)
 
-    def process_image(self, image_bytes: bytes, prompt: str = None, source: str = "image", user: str = None) -> str:
+    def process_image(self, image_bytes: bytes, prompt: str = None, source: str = "image", user: str = None, conversation_id: str = None) -> str:
         """Analyze an image (upload / webcam / screen capture) via
         vision.py, log it to memory like a normal turn, and optionally
         speak the result -- same contract as process()."""
@@ -108,7 +108,7 @@ class Assistant:
             log.exception("vision analysis failed")
             response = "Something went wrong analyzing that image."
 
-        memory.add_turn("assistant", response, user=user)
+        memory.add_turn("assistant", response, user=user, conversation_id=conversation_id)
         log.info("assistant: %s", response)
 
         if self.speak_replies:
