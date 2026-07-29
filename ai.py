@@ -49,8 +49,8 @@ def _rule_based_reply(text: str) -> str:
     return random.choice(_UNKNOWN)
 
 
-def _build_messages(text: str) -> list:
-    history = memory.get_history(limit=10)
+def _build_messages(text: str, user: str = None, conversation_id: str = None) -> list:
+    history = memory.get_history(limit=10, user=user, conversation_id=conversation_id)
     messages = [{"role": "system",
                  "content": f"You are {settings.get('assistant_name', 'Jarvis')}, a concise, "
                             f"helpful assistant. Keep replies short."}]
@@ -72,7 +72,7 @@ def _call_openai_compatible(base_url: str, api_key: str, model: str, messages: l
     return r.json()["choices"][0]["message"]["content"].strip()
 
 
-def _llm_reply(text: str) -> str:
+def _llm_reply(text: str, user: str = None, conversation_id: str = None) -> str:
     """Try Groq first (fast, generous free tier), then a plain OpenAI key
     if that's configured instead, then fall back to offline rule-based
     small talk. A missing or bad key never breaks the app."""
@@ -82,7 +82,7 @@ def _llm_reply(text: str) -> str:
     if not groq_key and not openai_key:
         return _rule_based_reply(text)
 
-    messages = _build_messages(text)
+    messages = _build_messages(text, user=user, conversation_id=conversation_id)
 
     if groq_key:
         try:
@@ -109,5 +109,5 @@ def _llm_reply(text: str) -> str:
     return _rule_based_reply(text)
 
 
-def reply(text: str) -> str:
-    return _llm_reply(text)
+def reply(text: str, user: str = None, conversation_id: str = None) -> str:
+    return _llm_reply(text, user=user, conversation_id=conversation_id)
