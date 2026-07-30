@@ -228,10 +228,10 @@ async def vision_analyze(
 
 
 @app.get("/api/history")
-def history(limit: int = 50, email: str = Depends(require_user)):
+def history(limit: int = 50, conversation_id: str = None, email: str = Depends(require_user)):
     # Legacy single-history endpoint, kept for backward compatibility.
     # The sidebar uses /api/conversations instead.
-    return memory.get_history(limit=limit, user=email)
+    return memory.get_history(limit=limit, user=email, conversation_id=conversation_id)
 
 
 # ------------------------------------------------------------- conversations
