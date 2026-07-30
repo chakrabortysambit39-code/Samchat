@@ -456,3 +456,176 @@ document.getElementById("settingsSave").addEventListener("click", async () => {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) webcamBtn.disabled = true;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) screenBtn.disabled = true;
 })();
+/* ===========================================================
+   PREMIUM SYSTEM
+=========================================================== */
+
+const premiumBtn = document.getElementById("premiumBtn");
+const premiumModal = document.getElementById("premiumModal");
+const premiumPayBtn = document.getElementById("premiumPayBtn");
+const submitTxnBtn = document.getElementById("submitTxnBtn");
+const closePremiumBtn = document.getElementById("closePremiumBtn");
+
+const txnInput = document.getElementById("txnInput");
+
+const premiumBadge = document.getElementById("premiumBadge");
+const usageBadge = document.getElementById("usageBadge");
+
+let currentOrder = null;
+
+
+/* -------------------- status ---------------------- */
+
+async function loadPremiumStatus(){
+
+    try{
+
+        const r = await fetch("/api/premium/status");
+
+        if(!r.ok) return;
+
+        const data = await r.json();
+
+        if(data.is_premium){
+
+            premiumBadge.classList.remove("hidden");
+
+            usageBadge.innerHTML="👑 Unlimited";
+
+        }else{
+
+            premiumBadge.classList.add("hidden");
+
+            usageBadge.innerHTML=
+            `${data.used_today}/${data.daily_limit} Free`;
+
+        }
+
+    }catch(e){
+
+        console.log(e);
+
+    }
+
+}
+
+
+/* -------------------- open modal ---------------------- */
+
+premiumBtn.onclick=()=>{
+
+    premiumModal.classList.remove("hidden");
+
+};
+
+
+/* -------------------- close modal ---------------------- */
+
+closePremiumBtn.onclick=()=>{
+
+    premiumModal.classList.add("hidden");
+
+};
+
+
+/* -------------------- create order ---------------------- */
+
+premiumPayBtn.onclick=async()=>{
+
+    try{
+
+        const r=await fetch("/api/premium/create-order",{
+
+            method:"POST"
+
+        });
+
+        const data=await r.json();
+
+        currentOrder=data;
+
+        window.open(data.upi_link,"_blank");
+
+        toast("Complete payment then submit transaction id.");
+
+    }
+
+    catch{
+
+        toast("Unable to start payment.");
+
+    }
+
+};
+
+
+/* -------------------- submit txn ---------------------- */
+
+submitTxnBtn.onclick=async()=>{
+
+    if(!currentOrder){
+
+        toast("Pay first.");
+
+        return;
+
+    }
+
+    const txn=txnInput.value.trim();
+
+    if(txn===""){
+
+        toast("Enter transaction id.");
+
+        return;
+
+    }
+
+    try{
+
+        const r=await fetch("/api/premium/submit-txn",{
+
+            method:"POST",
+
+            headers:{
+
+                "Content-Type":"application/json"
+
+            },
+
+            body:JSON.stringify({
+
+                order_id:currentOrder.order_id,
+
+                txn_ref:txn
+
+            })
+
+        });
+
+        const data=await r.json();
+
+        toast(data.message||"Submitted.");
+
+        premiumModal.classList.add("hidden");
+
+        txnInput.value="";
+
+        loadPremiumStatus();
+
+    }
+
+    catch{
+
+        toast("Submission failed.");
+
+    }
+
+};
+
+
+/* -------------------- auto refresh ---------------------- */
+
+setInterval(loadPremiumStatus,30000);
+
+loadPremiumStatus();
