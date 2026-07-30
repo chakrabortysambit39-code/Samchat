@@ -629,3 +629,903 @@ submitTxnBtn.onclick=async()=>{
 setInterval(loadPremiumStatus,30000);
 
 loadPremiumStatus();
+/* ===========================================================
+   ADMIN LOGIN
+=========================================================== */
+
+const adminLink = document.getElementById("adminLink");
+const adminModal = document.getElementById("adminModal");
+const adminCode = document.getElementById("adminCode");
+const adminLoginBtn = document.getElementById("adminLoginBtn");
+const adminCancelBtn = document.getElementById("adminCancelBtn");
+const adminError = document.getElementById("adminError");
+
+let adminKey = localStorage.getItem("admin_key") || "";
+
+/* -------------------- open popup ---------------------- */
+
+if (adminLink) {
+    adminLink.addEventListener("click", (e) => {
+        e.preventDefault();
+
+        adminError.textContent = "";
+        adminCode.value = "";
+
+        adminModal.classList.remove("hidden");
+        adminCode.focus();
+    });
+}
+
+/* -------------------- close popup ---------------------- */
+
+function closeAdminModal() {
+    adminModal.classList.add("hidden");
+    adminError.textContent = "";
+}
+
+if (adminCancelBtn) {
+    adminCancelBtn.onclick = closeAdminModal;
+}
+
+/* close by clicking outside */
+
+if (adminModal) {
+    adminModal.addEventListener("click", (e) => {
+        if (e.target === adminModal) {
+            closeAdminModal();
+        }
+    });
+}
+
+/* ESC key */
+
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !adminModal.classList.contains("hidden")) {
+        closeAdminModal();
+    }
+});
+
+/* -------------------- validate ---------------------- */
+
+async function validateAdmin(code) {
+
+    const response = await fetch("/api/admin/payments/pending", {
+        headers: {
+            "X-Admin-Key": code
+        }
+    });
+
+    return response.ok;
+}
+
+/* -------------------- login ---------------------- */
+
+async function adminLogin() {
+
+    const code = adminCode.value.trim();
+
+    if (!code) {
+        adminError.textContent = "Please enter Admin Code.";
+        return;
+    }
+
+    adminLoginBtn.disabled = true;
+    adminLoginBtn.textContent = "Checking...";
+
+    try {
+
+        const ok = await validateAdmin(code);
+
+        if (!ok) {
+            adminError.textContent = "Invalid Admin Code";
+            return;
+        }
+
+        adminKey = code;
+
+        localStorage.setItem("admin_key", code);
+
+        window.location.href = "/admin";
+
+    } catch (err) {
+
+        console.error(err);
+
+        adminError.textContent = "Server unavailable.";
+
+    } finally {
+
+        adminLoginBtn.disabled = false;
+        adminLoginBtn.textContent = "Login";
+
+    }
+
+}
+
+if (adminLoginBtn) {
+    adminLoginBtn.onclick = adminLogin;
+}
+
+/* ENTER key */
+
+if (adminCode) {
+
+    adminCode.addEventListener("keydown", (e) => {
+
+        if (e.key === "Enter") {
+
+            adminLogin();
+
+        }
+
+    });
+
+}
+/* ===========================================================
+   ADMIN DASHBOARD API
+=========================================================== */
+
+const API = {
+
+    get adminKey() {
+        return localStorage.getItem("admin_key") || "";
+    },
+
+    headers(extra = {}) {
+        return {
+            "Content-Type": "application/json",
+            "X-Admin-Key": this.adminKey,
+            ...extra
+        };
+    },
+
+    async get(url) {
+
+        const r = await fetch(url, {
+            headers: this.headers()
+        });
+
+        if (!r.ok)
+            throw new Error(await r.text());
+
+        return await r.json();
+
+    },
+
+    async post(url, body = {}) {
+
+        const r = await fetch(url, {
+
+            method: "POST",
+
+            headers: this.headers(),
+
+            body: JSON.stringify(body)
+
+        });
+
+        if (!r.ok)
+            throw new Error(await r.text());
+
+        return await r.json();
+
+    },
+
+    async del(url) {
+
+        const r = await fetch(url, {
+
+            method: "DELETE",
+
+            headers: this.headers()
+
+        });
+
+        if (!r.ok)
+            throw new Error(await r.text());
+
+        return await r.json();
+
+    }
+
+};
+
+
+/* ===========================================================
+   ADMIN FUNCTIONS
+=========================================================== */
+
+
+async function getPendingPayments(){
+
+    return await API.get("/api/admin/payments/pending");
+
+}
+
+
+async function approvePayment(orderId){
+
+    return await API.post("/api/admin/payments/approve",{
+
+        order_id:orderId
+
+    });
+
+}
+
+
+async function rejectPayment(orderId){
+
+    return await API.post("/api/admin/payments/reject",{
+
+        order_id:orderId
+
+    });
+
+}
+
+
+async function getUsers(){
+
+    return await API.get("/api/admin/users");
+
+}
+
+
+async function getDashboard(){
+
+    return await API.get("/api/admin/dashboard");
+
+}
+
+
+async function getAnalytics(){
+
+    return await API.get("/api/admin/analytics");
+
+}
+
+
+async function getRevenue(){
+
+    return await API.get("/api/admin/revenue");
+
+}
+
+
+async function getBroadcasts(){
+
+    return await API.get("/api/admin/broadcasts");
+
+}
+
+
+async function sendBroadcast(message){
+
+    return await API.post("/api/admin/broadcast",{
+
+        message
+
+    });
+
+}
+
+
+/* ===========================================================
+   ADMIN LOGOUT
+=========================================================== */
+
+function adminLogout(){
+
+    localStorage.removeItem("admin_key");
+
+    window.location="/login";
+
+}
+
+
+/* ===========================================================
+   AUTO REDIRECT IF KEY MISSING
+=========================================================== */
+
+function requireAdmin(){
+
+    if(!localStorage.getItem("admin_key")){
+
+        window.location="/login";
+
+        return false;
+
+    }
+
+    return true;
+
+}
+/* ===========================================================
+   USER MANAGEMENT
+=========================================================== */
+
+let adminUsers = [];
+let filteredUsers = [];
+
+/* -------------------- load users ---------------------- */
+
+async function loadUsers() {
+
+    try {
+
+        adminUsers = await getUsers();
+
+        filteredUsers = [...adminUsers];
+
+        return filteredUsers;
+
+    } catch (err) {
+
+        console.error(err);
+
+        toast("Unable to load users.");
+
+        return [];
+
+    }
+
+}
+
+/* -------------------- search ---------------------- */
+
+function searchUsers(keyword = "") {
+
+    keyword = keyword.trim().toLowerCase();
+
+    if (keyword === "") {
+
+        filteredUsers = [...adminUsers];
+
+        return filteredUsers;
+
+    }
+
+    filteredUsers = adminUsers.filter(user => {
+
+        return (
+
+            (user.email || "").toLowerCase().includes(keyword) ||
+
+            (user.name || "").toLowerCase().includes(keyword)
+
+        );
+
+    });
+
+    return filteredUsers;
+
+}
+
+/* -------------------- premium ---------------------- */
+
+async function makePremium(email, days = 30) {
+
+    try {
+
+        await API.post("/api/admin/users/premium", {
+
+            email,
+
+            days
+
+        });
+
+        toast("Premium Activated");
+
+        await loadUsers();
+
+    }
+
+    catch (err) {
+
+        toast("Failed");
+
+    }
+
+}
+
+
+async function removePremium(email) {
+
+    try {
+
+        await API.post("/api/admin/users/remove-premium", {
+
+            email
+
+        });
+
+        toast("Premium Removed");
+
+        await loadUsers();
+
+    }
+
+    catch (err) {
+
+        toast("Failed");
+
+    }
+
+}
+
+
+/* -------------------- ban ---------------------- */
+
+async function banUser(email) {
+
+    if (!confirm("Ban this user?"))
+
+        return;
+
+    try {
+
+        await API.post("/api/admin/users/ban", {
+
+            email
+
+        });
+
+        toast("User Banned");
+
+        await loadUsers();
+
+    }
+
+    catch {
+
+        toast("Failed");
+
+    }
+
+}
+
+
+/* -------------------- unban ---------------------- */
+
+async function unbanUser(email) {
+
+    try {
+
+        await API.post("/api/admin/users/unban", {
+
+            email
+
+        });
+
+        toast("User Unbanned");
+
+        await loadUsers();
+
+    }
+
+    catch {
+
+        toast("Failed");
+
+    }
+
+}
+
+
+/* -------------------- delete ---------------------- */
+
+async function deleteUser(email) {
+
+    if (!confirm("Delete this user permanently?"))
+
+        return;
+
+    try {
+
+        await API.post("/api/admin/users/delete", {
+
+            email
+
+        });
+
+        toast("User Deleted");
+
+        await loadUsers();
+
+    }
+
+    catch {
+
+        toast("Delete Failed");
+
+    }
+
+}
+
+
+/* -------------------- reset usage ---------------------- */
+
+async function resetUsage(email){
+
+    try{
+
+        await API.post("/api/admin/users/reset-usage",{
+
+            email
+
+        });
+
+        toast("Usage Reset");
+
+    }
+
+    catch{
+
+        toast("Failed");
+
+    }
+
+}
+
+
+/* -------------------- details ---------------------- */
+
+async function getUserDetails(email){
+
+    return await API.post("/api/admin/users/details",{
+
+        email
+
+    });
+
+}
+
+
+/* -------------------- export csv ---------------------- */
+
+function exportUsersCSV(){
+
+    if(adminUsers.length===0){
+
+        toast("No users");
+
+        return;
+
+    }
+
+    let csv="Name,Email,Premium,Banned\n";
+
+    adminUsers.forEach(u=>{
+
+        csv+=`"${u.name||""}","${u.email}",${u.premium},${u.banned}\n`;
+
+    });
+
+    const blob=new Blob([csv],{
+
+        type:"text/csv"
+
+    });
+
+    const url=URL.createObjectURL(blob);
+
+    const a=document.createElement("a");
+
+    a.href=url;
+
+    a.download="users.csv";
+
+    a.click();
+
+    URL.revokeObjectURL(url);
+
+}
+
+
+/* -------------------- stats ---------------------- */
+
+function userStats(){
+
+    return{
+
+        total:adminUsers.length,
+
+        premium:adminUsers.filter(x=>x.premium).length,
+
+        banned:adminUsers.filter(x=>x.banned).length,
+
+        free:adminUsers.filter(x=>!x.premium).length
+
+    };
+
+}
+/* ===========================================================
+   ADMIN DASHBOARD
+=========================================================== */
+
+let dashboardData = {};
+let analyticsData = {};
+let revenueData = {};
+let paymentData = [];
+
+/* ---------------- Dashboard ---------------- */
+
+async function refreshDashboard(){
+
+    try{
+
+        dashboardData = await getDashboard();
+
+        return dashboardData;
+
+    }
+
+    catch(err){
+
+        console.error(err);
+
+        toast("Dashboard unavailable.");
+
+        return {};
+
+    }
+
+}
+
+
+/* ---------------- Analytics ---------------- */
+
+async function refreshAnalytics(){
+
+    try{
+
+        analyticsData = await getAnalytics();
+
+        return analyticsData;
+
+    }
+
+    catch{
+
+        toast("Analytics unavailable.");
+
+        return {};
+
+    }
+
+}
+
+
+/* ---------------- Revenue ---------------- */
+
+async function refreshRevenue(){
+
+    try{
+
+        revenueData = await getRevenue();
+
+        return revenueData;
+
+    }
+
+    catch{
+
+        toast("Revenue unavailable.");
+
+        return {};
+
+    }
+
+}
+
+
+/* ---------------- Pending Payments ---------------- */
+
+async function refreshPayments(){
+
+    try{
+
+        paymentData = await getPendingPayments();
+
+        return paymentData;
+
+    }
+
+    catch{
+
+        toast("Unable to load payments.");
+
+        return [];
+
+    }
+
+}
+
+
+/* ---------------- Approve ---------------- */
+
+async function approve(orderId){
+
+    try{
+
+        await approvePayment(orderId);
+
+        toast("Payment Approved");
+
+        await refreshPayments();
+
+    }
+
+    catch{
+
+        toast("Approval Failed");
+
+    }
+
+}
+
+
+/* ---------------- Reject ---------------- */
+
+async function reject(orderId){
+
+    try{
+
+        await rejectPayment(orderId);
+
+        toast("Payment Rejected");
+
+        await refreshPayments();
+
+    }
+
+    catch{
+
+        toast("Reject Failed");
+
+    }
+
+}
+
+
+/* ===========================================================
+   BROADCAST
+=========================================================== */
+
+async function broadcastMessage(){
+
+    const msg = prompt("Broadcast Message");
+
+    if(!msg) return;
+
+    try{
+
+        await sendBroadcast(msg);
+
+        toast("Broadcast Sent");
+
+    }
+
+    catch{
+
+        toast("Broadcast Failed");
+
+    }
+
+}
+
+
+/* ===========================================================
+   EXPORT
+=========================================================== */
+
+async function exportPaymentsCSV(){
+
+    const payments = await refreshPayments();
+
+    if(payments.length===0){
+
+        toast("No payments");
+
+        return;
+
+    }
+
+    let csv="Order ID,Email,Txn ID,Amount,Status\n";
+
+    payments.forEach(p=>{
+
+        csv+=`"${p.order_id}","${p.email}","${p.txn_ref}",${p.amount},"${p.status}"\n`;
+
+    });
+
+    const blob=new Blob([csv],{
+
+        type:"text/csv"
+
+    });
+
+    const url=URL.createObjectURL(blob);
+
+    const a=document.createElement("a");
+
+    a.href=url;
+
+    a.download="payments.csv";
+
+    a.click();
+
+    URL.revokeObjectURL(url);
+
+}
+
+
+/* ===========================================================
+   LIVE REFRESH
+=========================================================== */
+
+async function refreshAdmin(){
+
+    if(!localStorage.getItem("admin_key"))
+
+        return;
+
+    try{
+
+        await Promise.all([
+
+            refreshDashboard(),
+
+            refreshAnalytics(),
+
+            refreshRevenue(),
+
+            refreshPayments(),
+
+            loadUsers()
+
+        ]);
+
+    }
+
+    catch(e){
+
+        console.log(e);
+
+    }
+
+}
+
+
+/* ===========================================================
+   AUTO REFRESH
+=========================================================== */
+
+setInterval(()=>{
+
+    if(localStorage.getItem("admin_key")){
+
+        refreshAdmin();
+
+    }
+
+},30000);
+
+
+/* ===========================================================
+   ADMIN STARTUP
+=========================================================== */
+
+window.addEventListener("load",()=>{
+
+    if(window.location.pathname==="/admin"){
+
+        requireAdmin();
+
+        refreshAdmin();
+
+    }
+
+});
