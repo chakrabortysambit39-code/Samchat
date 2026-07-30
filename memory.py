@@ -73,7 +73,18 @@ def add_turn(speaker: str, text: str, user: str = None) -> None:
     _save(data, user)
 
 
-def get_history(limit: int = 20, user: str = None) -> list:
+def get_history(limit: int = 20, user: str = None, conversation_id: str = None) -> list:
+    """Recent turns as [{speaker, text, time}, ...].
+
+    If conversation_id is given, pulls from that conversation's own
+    messages (conversation mode) instead of the legacy single shared
+    history -- this is what lets ai.py build its prompt context from
+    the right chat thread when the web UI is using conversations."""
+    if conversation_id:
+        conv = get_conversation(user, conversation_id)
+        if not conv:
+            return []
+        return conv.get("messages", [])[-limit:]
     return _load(user)["history"][-limit:]
 
 
