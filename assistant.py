@@ -10,6 +10,12 @@ An optional `user` (email) argument threads through to memory.py so
 chat/vision history is saved to that person's own private data folder
 instead of the single shared memory file. Pass None (or omit it) for
 single-user / CLI usage -- behavior is unchanged in that case.
+
+An optional `conversation_id` additionally routes logging through
+memory's conversation-mode functions (add_message) instead of the
+legacy single-history ones (add_turn) -- this is what lets the web UI
+keep multiple separate, nameable chats. Omit it (the CLI/voice loop
+does) to keep using the single running history exactly as before.
 """
 import re
 
@@ -40,6 +46,12 @@ class Assistant:
     def __init__(self, speak_replies: bool = True):
         self.speak_replies = speak_replies
 
+    def _log_turn(self, speaker: str, text: str, user: str = None, conversation_id: str = None) -> None:
+        if conversation_id:
+            memory.add_message(user, conversation_id, speaker, text)
+        else:
+            memory.add_turn(speaker, text, user=user)
+
     def process(self, text: str, user: str = None, conversation_id: str = None) -> str:
         text = (text or "").strip()
         if not text:
@@ -50,16 +62,16 @@ class Assistant:
                 webcam.capture_frame(), source="webcam snapshot",
                 unavailable_msg="I can't access a webcam on this machine "
                                  "(no camera, or opencv-python isn't installed).",
-                user=user,
+                user=user, conversation_id=conversation_id,
             )
         if _SCREEN_TRIGGERS.search(text):
             return self._capture_and_analyze(
                 screen.capture_screen(), source="screenshot",
                 unavailable_msg="I can't capture the screen on this machine.",
-                user=user,
+                user=user, conversation_id=conversation_id,
             )
 
-        memory.add_turn("user", text, user=user, conversation_id=conversation_id)
+        self._log_turn("user", text, user=user, conversation_id=conversation_id)
         log.info("user: %s", text)
 
         try:
@@ -70,12 +82,12 @@ class Assistant:
 
         if response is None:
             try:
-                response = ai.reply(text, user=user, conversation_id=conversation_id)
+                response = ai.reply(text)
             except Exception as e:
                 log.exception("ai fallback failed")
                 response = "Sorry, I hit an error trying to respond to that."
 
-        memory.add_turn("assistant", response, user=user, conversation_id=conversation_id)
+        self._log_turn("assistant", response, user=user, conversation_id=conversation_id)
         log.info("assistant: %s", response)
 
         if self.speak_replies:
@@ -83,15 +95,17 @@ class Assistant:
 
         return response
 
-    def _capture_and_analyze(self, image_bytes, source: str, unavailable_msg: str, user: str = None, conversation_id: str = None) -> str:
+    def _capture_and_analyze(self, image_bytes, source: str, unavailable_msg: str,
+                              user: str = None, conversation_id: str = None) -> str:
         if not image_bytes:
-            memory.add_turn("assistant", unavailable_msg, user=user)
+            self._log_turn("assistant", unavailable_msg, user=user, conversation_id=conversation_id)
             if self.speak_replies:
                 speech.say(unavailable_msg)
             return unavailable_msg
         return self.process_image(image_bytes, source=source, user=user, conversation_id=conversation_id)
 
-    def process_image(self, image_bytes: bytes, prompt: str = None, source: str = "image", user: str = None, conversation_id: str = None) -> str:
+    def process_image(self, image_bytes: bytes, prompt: str = None, source: str = "image",
+                       user: str = None, conversation_id: str = None) -> str:
         """Analyze an image (upload / webcam / screen capture) via
         vision.py, log it to memory like a normal turn, and optionally
         speak the result -- same contract as process()."""
@@ -99,7 +113,7 @@ class Assistant:
             return "I didn't get an image to look at."
 
         user_note = prompt.strip() if prompt else f"[sent a {source}]"
-        memory.add_turn("user", user_note, user=user)
+        self._log_turn("user", user_note, user=user, conversation_id=conversation_id)
         log.info("user sent %s (prompt=%r)", source, prompt)
 
         try:
@@ -108,7 +122,7 @@ class Assistant:
             log.exception("vision analysis failed")
             response = "Something went wrong analyzing that image."
 
-        memory.add_turn("assistant", response, user=user, conversation_id=conversation_id)
+        self._log_turn("assistant", response, user=user, conversation_id=conversation_id)
         log.info("assistant: %s", response)
 
         if self.speak_replies:
