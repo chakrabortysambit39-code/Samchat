@@ -1,5 +1,5 @@
 // app.js — browser chat UI for Jarvis, talking to the FastAPI backend
-// in server.py: /api/chat, /api/vision, /api/settings, /api/history.
+// in server.py: /api/chat, /api/vision, /api/settings, /api/conversations.
 
 const chatLog = document.getElementById("chatLog");
 const textInput = document.getElementById("textInput");
@@ -14,8 +14,12 @@ const helpBtn = document.getElementById("helpBtn");
 const settingsBtn = document.getElementById("settingsBtn");
 const clockEl = document.getElementById("clock");
 const assistantNameEl = document.getElementById("assistantName");
+const newChatBtn = document.getElementById("newChatBtn");
+const conversationListEl = document.getElementById("conversationList");
+const logoutBtn = document.getElementById("logoutBtn");
 
 let assistantName = "Jarvis";
+let currentConversationId = null;
 
 // ------------------------------------------------------------------ clock
 function tickClock() {
@@ -67,6 +71,121 @@ function toast(msg) {
   setTimeout(() => el.remove(), 3200);
 }
 
+// ------------------------------------------------------------ conversations
+async function fetchConversations() {
+  try {
+    const res = await fetch("/api/conversations");
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (_) {
+    return [];
+  }
+}
+
+function renderConversationList(conversations) {
+  conversationListEl.innerHTML = "";
+  for (const conv of conversations) {
+    const item = document.createElement("div");
+    item.className = "conv-item" + (conv.id === currentConversationId ? " active" : "");
+    item.dataset.id = conv.id;
+
+    const title = document.createElement("span");
+    title.className = "conv-item-title";
+    title.textContent = conv.title || "New chat";
+    item.appendChild(title);
+
+    const del = document.createElement("button");
+    del.className = "conv-item-delete";
+    del.type = "button";
+    del.title = "Delete chat";
+    del.textContent = "×";
+    del.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteConversation(conv.id);
+    });
+    item.appendChild(del);
+
+    item.addEventListener("click", () => selectConversation(conv.id));
+    conversationListEl.appendChild(item);
+  }
+}
+
+async function refreshConversationList() {
+  const conversations = await fetchConversations();
+  renderConversationList(conversations);
+  return conversations;
+}
+
+async function selectConversation(convId) {
+  try {
+    const res = await fetch(`/api/conversations/${convId}`);
+    if (!res.ok) throw new Error("couldn't load that chat");
+    const conv = await res.json();
+    currentConversationId = conv.id;
+    chatLog.innerHTML = "";
+    if (conv.messages && conv.messages.length) {
+      for (const m of conv.messages) {
+        addMessage(m.speaker === "user" ? "You" : assistantName, m.text);
+      }
+    } else {
+      greet();
+    }
+    highlightActiveConversation();
+  } catch (err) {
+    toast("Couldn't load that chat.");
+  }
+}
+
+function highlightActiveConversation() {
+  for (const item of conversationListEl.children) {
+    item.classList.toggle("active", item.dataset.id === currentConversationId);
+  }
+}
+
+async function startNewConversation() {
+  try {
+    const res = await fetch("/api/conversations", { method: "POST" });
+    if (!res.ok) throw new Error("couldn't start a new chat");
+    const conv = await res.json();
+    currentConversationId = conv.id;
+    chatLog.innerHTML = "";
+    greet();
+    await refreshConversationList();
+  } catch (err) {
+    toast("Couldn't start a new chat.");
+  }
+}
+
+async function deleteConversation(convId) {
+  try {
+    const res = await fetch(`/api/conversations/${convId}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("delete failed");
+    const wasActive = convId === currentConversationId;
+    const conversations = await refreshConversationList();
+    if (wasActive) {
+      if (conversations.length) {
+        await selectConversation(conversations[0].id);
+      } else {
+        await startNewConversation();
+      }
+    }
+  } catch (err) {
+    toast("Couldn't delete that chat.");
+  }
+}
+
+newChatBtn.addEventListener("click", startNewConversation);
+
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      window.location.href = "/login";
+    }
+  });
+}
+
 // -------------------------------------------------------------- api calls
 async function sendChat(text) {
   const pendingBubble = addMessage(assistantName, "", { pending: true });
@@ -74,12 +193,22 @@ async function sendChat(text) {
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text }),
+      body: JSON.stringify({ message: text, conversation_id: currentConversationId }),
     });
     if (!res.ok) throw new Error((await res.json()).detail || "request failed");
     const data = await res.json();
     pendingBubble.textContent = data.reply;
     speak(data.reply);
+
+    const isNewConversation = currentConversationId !== data.conversation_id;
+    currentConversationId = data.conversation_id;
+    if (isNewConversation) {
+      await refreshConversationList();
+    } else {
+      // Title may have just been auto-generated from this first message,
+      // or the "updated" ordering changed -- refresh the list either way.
+      await refreshConversationList();
+    }
   } catch (err) {
     pendingBubble.textContent = `Sorry, something went wrong: ${err.message}`;
   }
@@ -93,11 +222,14 @@ async function sendImage(blob, source, imageUrl) {
     const form = new FormData();
     form.append("image", blob, `${source.replace(/\s+/g, "_")}.jpg`);
     form.append("source", source);
+    if (currentConversationId) form.append("conversation_id", currentConversationId);
     const res = await fetch("/api/vision", { method: "POST", body: form });
     if (!res.ok) throw new Error((await res.json()).detail || "request failed");
     const data = await res.json();
     pendingBubble.textContent = data.reply;
     speak(data.reply);
+    currentConversationId = data.conversation_id;
+    await refreshConversationList();
   } catch (err) {
     pendingBubble.textContent = `Sorry, I couldn't analyze that: ${err.message}`;
   }
@@ -312,7 +444,14 @@ document.getElementById("settingsSave").addEventListener("click", async () => {
 // ------------------------------------------------------------------ init
 (async function init() {
   await loadSettings();
-  greet();
+
+  const conversations = await refreshConversationList();
+  if (conversations.length) {
+    await selectConversation(conversations[0].id);
+  } else {
+    await startNewConversation();
+  }
+
   if (!webcamBtn) return;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) webcamBtn.disabled = true;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) screenBtn.disabled = true;
