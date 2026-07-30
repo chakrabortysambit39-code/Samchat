@@ -14,15 +14,17 @@ is kept in its own private folder under data/users/<id>/ (see
 memory.py / users.py). Settings and reminders are still shared across
 everyone for now (see README "Known limitations").
 """
+import hmac
 import os
 
-from fastapi import Cookie, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Cookie, Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import memory
+import payments
 import reminders
 import settings
 import users
@@ -70,6 +72,23 @@ def require_user(jarvis_session: str = Cookie(default=None)) -> str:
     if not email:
         raise HTTPException(status_code=401, detail="not logged in")
     return email
+
+
+# Admin key for the /admin payment-approval panel. Set this as a real
+# secret in your environment -- e.g.
+#   export SAMCHAT_ADMIN_KEY="something-long-and-random"
+# Do NOT ship the default value to production.
+ADMIN_KEY = os.environ.get("SAMCHAT_ADMIN_KEY", "change-me")
+
+
+def require_admin(x_admin_key: str | None = Header(default=None, alias="X-Admin-Key")) -> bool:
+    """FastAPI dependency: gates every /api/admin/* route behind a
+    shared-secret header. Raises 401/403 if missing or wrong."""
+    if not x_admin_key:
+        raise HTTPException(status_code=401, detail="missing admin key")
+    if not hmac.compare_digest(x_admin_key, ADMIN_KEY):
+        raise HTTPException(status_code=403, detail="invalid admin key")
+    return True
 
 
 class SignupIn(BaseModel):
@@ -179,6 +198,16 @@ def chat(payload: ChatIn, email: str = Depends(require_user)):
     if not text:
         raise HTTPException(status_code=400, detail="message is empty")
 
+    if not users.check_and_increment_usage(email, payments.FREE_DAILY_LIMIT):
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "free_limit_reached",
+                "message": "You're out of free messages for today. Upgrade to premium for unlimited access.",
+                "price_inr": payments.PREMIUM_PRICE_INR,
+            },
+        )
+
     conv_id = payload.conversation_id
     if not conv_id or not memory.get_conversation(email, conv_id):
         conv_id = memory.create_conversation(email)
@@ -212,6 +241,16 @@ async def vision_analyze(
         raise HTTPException(status_code=400, detail="empty image")
     if len(data) > MAX_IMAGE_BYTES:
         raise HTTPException(status_code=413, detail="image too large (max 15MB)")
+
+    if not users.check_and_increment_usage(email, payments.FREE_DAILY_LIMIT):
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "free_limit_reached",
+                "message": "You're out of free messages for today. Upgrade to premium for unlimited access.",
+                "price_inr": payments.PREMIUM_PRICE_INR,
+            },
+        )
 
     conv_id = conversation_id
     if not conv_id or not memory.get_conversation(email, conv_id):
@@ -296,6 +335,83 @@ def update_settings(payload: SettingsIn, email: str = Depends(require_user)):
     if updates:
         settings.set_many(**updates)
     return get_settings(email=email)
+
+
+# ---------------------------------------------------------------------
+# Premium (₹200 UPI upgrade) -- user-facing
+# ---------------------------------------------------------------------
+
+class SubmitTxnIn(BaseModel):
+    order_id: str
+    txn_ref: str
+
+
+@app.post("/api/premium/create-order")
+def premium_create_order(email: str = Depends(require_user)):
+    return payments.create_order(user_id=email)
+
+
+@app.post("/api/premium/submit-txn")
+def premium_submit_txn(payload: SubmitTxnIn, email: str = Depends(require_user)):
+    try:
+        order = payments.submit_txn_ref(payload.order_id, email, payload.txn_ref)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"status": "submitted", "order": order}
+
+
+@app.get("/api/premium/status")
+def premium_status(email: str = Depends(require_user)):
+    return users.get_usage(email, payments.FREE_DAILY_LIMIT)
+
+
+# ---------------------------------------------------------------------
+# Admin -- payment approval (all gated behind require_admin)
+# ---------------------------------------------------------------------
+
+class ApprovePaymentIn(BaseModel):
+    order_id: str
+
+
+class RejectPaymentIn(BaseModel):
+    order_id: str
+    reason: str = ""
+
+
+@app.get("/api/admin/payments/pending")
+def admin_pending_payments(_: bool = Depends(require_admin)):
+    return {"orders": payments.list_pending_orders()}
+
+
+@app.post("/api/admin/payments/approve")
+def admin_approve_payment(payload: ApprovePaymentIn, _: bool = Depends(require_admin)):
+    try:
+        order = payments.approve_order(payload.order_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    try:
+        users.set_premium(order["user_id"], payments.premium_expiry_from_now())
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return {"status": "approved", "order": order}
+
+
+@app.post("/api/admin/payments/reject")
+def admin_reject_payment(payload: RejectPaymentIn, _: bool = Depends(require_admin)):
+    try:
+        order = payments.reject_order(payload.order_id, payload.reason)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return {"status": "rejected", "order": order}
+
+
+@app.get("/admin")
+def admin_page():
+    # Auth happens client-side: admin.html prompts for the X-Admin-Key
+    # and sends it on every /api/admin/* call above.
+    return FileResponse(os.path.join(STATIC_DIR, "admin.html"))
 
 
 # ---------------------------------------------------------------------
