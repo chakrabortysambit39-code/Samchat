@@ -365,6 +365,28 @@ def premium_status(email: str = Depends(require_user)):
     return users.get_usage(email, payments.FREE_DAILY_LIMIT)
 
 
+
+# ---------------------------------------------------------------------
+# Admin Dashboard
+# ---------------------------------------------------------------------
+
+@app.get("/api/admin/dashboard")
+def admin_dashboard(_: bool = Depends(require_admin)):
+    pending = payments.list_pending_orders()
+    return {
+        "success": True,
+        "stats": {
+            "total_users": 0,
+            "premium_users": 0,
+            "free_users": 0,
+            "pending_payments": len(pending),
+            "approved_payments": 0,
+            "total_revenue": 0,
+            "today_messages": 0,
+            "total_messages": 0
+        }
+    }
+
 # ---------------------------------------------------------------------
 # Admin -- payment approval (all gated behind require_admin)
 # ---------------------------------------------------------------------
