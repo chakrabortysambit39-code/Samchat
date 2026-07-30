@@ -7,38 +7,44 @@
 <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-  <div class="app">
-    <header class="topbar">
-      <div class="brand">
-        <span class="brand-dot"></span>
-        <h1 id="assistantName">Jarvis</h1>
+  <div class="shell">
+    <aside class="sidebar">
+      <button id="newChatBtn" class="new-chat-btn" type="button">+ New chat</button>
+      <div id="conversationList" class="conversation-list"></div>
+      <div class="sidebar-footer">
+        <button id="logoutBtn" class="ghost-btn" type="button">Log out</button>
       </div>
-      <div class="topbar-right">
-        <time id="clock" class="clock"></time>
-        <button id="helpBtn" class="ghost-btn" type="button">Help</button>
-        <button id="clearBtn" class="ghost-btn" type="button">Clear</button>
-        <button id="settingsBtn" class="ghost-btn" type="button">⚙ Settings</button>
-      </div>
-    </header>
+    </aside>
 
-    <main class="chat-wrap">
-      <div id="chatLog" class="chat-log" aria-live="polite"></div>
-    </main>
-
-    <footer class="composer">
-      <div class="composer-row">
-        <button id="webcamBtn" class="icon-btn" type="button" title="Use webcam">📷</button>
-        <button id="screenBtn" class="icon-btn" type="button" title="Share screen">🖥</button>
-        <button id="uploadBtn" class="icon-btn" type="button" title="Upload image">📎</button>
-        <input id="fileInput" type="file" accept="image/*" hidden />
-
-        <input id="textInput" class="text-input" type="text"
-               placeholder="Ask Jarvis something, or type 'help'..." autocomplete="off" />
-
-        <button id="micBtn" class="icon-btn" type="button" title="Voice input">🎤</button>
-        <button id="sendBtn" class="send-btn" type="button">Send</button>
-      </div>
-    </footer>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-dot"></span>
+          <h1 id="assistantName">Jarvis</h1>
+        </div>
+        <div class="topbar-right">
+          <time id="clock" class="clock"></time>
+          <button id="helpBtn" class="ghost-btn" type="button">Help</button>
+          <button id="clearBtn" class="ghost-btn" type="button">Clear</button>
+          <button id="settingsBtn" class="ghost-btn" type="button">⚙ Settings</button>
+        </div>
+      </header>
+      <main class="chat-wrap">
+        <div id="chatLog" class="chat-log" aria-live="polite"></div>
+      </main>
+      <footer class="composer">
+        <div class="composer-row">
+          <button id="webcamBtn" class="icon-btn" type="button" title="Use webcam">📷</button>
+          <button id="screenBtn" class="icon-btn" type="button" title="Share screen">🖥</button>
+          <button id="uploadBtn" class="icon-btn" type="button" title="Upload image">📎</button>
+          <input id="fileInput" type="file" accept="image/*" hidden />
+          <input id="textInput" class="text-input" type="text"
+                 placeholder="Ask Jarvis something, or type 'help'..." autocomplete="off" />
+          <button id="micBtn" class="icon-btn" type="button" title="Voice input">🎤</button>
+          <button id="sendBtn" class="send-btn" type="button">Send</button>
+        </div>
+      </footer>
+    </div>
   </div>
 
   <!-- Webcam capture overlay -->
@@ -53,7 +59,6 @@
       </div>
     </div>
   </div>
-
   <!-- Settings modal -->
   <div id="settingsModal" class="modal hidden">
     <div class="modal-card">
@@ -82,7 +87,6 @@
       </div>
     </div>
   </div>
-
   <script src="/static/app.js"></script>
 </body>
 </html>
