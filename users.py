@@ -120,6 +120,11 @@ def signup(email: str, password: str) -> str:
         "password_hash": pw_hash,
         "salt": salt,
         "created": datetime.now(timezone.utc).isoformat(),
+        # premium / usage fields (see payments.py for the ₹200 upgrade flow)
+        "premium": False,
+        "premium_expires": None,   # unix timestamp, or None
+        "usage_date": None,        # "YYYY-MM-DD" for the free daily counter
+        "usage_count": 0,
     }
     _save_users(users)
     user_data_dir(email)  # create their private folder up front
@@ -177,3 +182,108 @@ def destroy_session(token: str) -> None:
     if token in sessions:
         del sessions[token]
         _save_sessions(sessions)
+
+
+# ---------------------------------------------------------------------
+# Premium / usage helpers (₹200 UPI upgrade -- see payments.py)
+# ---------------------------------------------------------------------
+
+def get_user(email: str) -> dict | None:
+    """Return the full user record (including premium/usage fields), or
+    None if no such account. Adds an 'email' key for convenience."""
+    email = _normalize_email(email)
+    users = _load_users()
+    record = users.get(email)
+    if not record:
+        return None
+    record = dict(record)
+    record["email"] = email
+    return record
+
+
+def save_user(record: dict) -> None:
+    """Persist changes to a user record previously returned by get_user().
+    Only the known mutable fields are written back; password_hash/salt/
+    created are preserved as-is unless explicitly present in `record`."""
+    email = _normalize_email(record.get("email", ""))
+    if not email:
+        raise ValueError("save_user: record has no email")
+
+    users = _load_users()
+    if email not in users:
+        raise ValueError(f"save_user: no such account {email}")
+
+    stored = users[email]
+    for key, value in record.items():
+        if key == "email":
+            continue
+        stored[key] = value
+    users[email] = stored
+    _save_users(users)
+
+
+def is_premium(email: str) -> bool:
+    """True if this account currently has an active premium upgrade."""
+    import time
+    record = get_user(email)
+    if not record or not record.get("premium"):
+        return False
+    expires = record.get("premium_expires")
+    return expires is None or expires > time.time()
+
+
+def set_premium(email: str, expires_at: float) -> dict:
+    """Activate premium for this account until `expires_at` (unix
+    timestamp). Called by payments.py after an admin approves an
+    order."""
+    record = get_user(email)
+    if not record:
+        raise ValueError(f"set_premium: no such account {email}")
+    record["premium"] = True
+    record["premium_expires"] = expires_at
+    save_user(record)
+    return record
+
+
+def check_and_increment_usage(email: str, daily_limit: int) -> bool:
+    """Enforce the free-tier daily message limit for non-premium users.
+    Returns True and increments the counter if the message is allowed.
+    Returns False (without incrementing) if the user is out of free
+    messages for today. Premium users always return True without
+    touching the counter."""
+    import time
+    record = get_user(email)
+    if not record:
+        raise ValueError(f"check_and_increment_usage: no such account {email}")
+
+    if is_premium(email):
+        return True
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if record.get("usage_date") != today:
+        record["usage_date"] = today
+        record["usage_count"] = 0
+
+    if record.get("usage_count", 0) >= daily_limit:
+        return False
+
+    record["usage_count"] = record.get("usage_count", 0) + 1
+    save_user(record)
+    return True
+
+
+def get_usage(email: str, daily_limit: int) -> dict:
+    """Read-only usage snapshot for the status badge, without incrementing."""
+    record = get_user(email)
+    if not record:
+        raise ValueError(f"get_usage: no such account {email}")
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    used = record.get("usage_count", 0) if record.get("usage_date") == today else 0
+    return {
+        "premium": is_premium(email),
+        "premium_expires": record.get("premium_expires"),
+        "used_today": used,
+        "daily_limit": daily_limit,
+        "remaining": max(0, daily_limit - used),
+    }
