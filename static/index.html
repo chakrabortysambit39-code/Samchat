@@ -1,116 +1,365 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Jarvis</title>
-<link rel="stylesheet" href="/static/style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>Samchat AI</title>
+
+<link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
-  <div class="shell">
+
+<div class="shell">
+
     <aside class="sidebar">
-      <button id="newChatBtn" class="new-chat-btn" type="button">+ New chat</button>
-      <div id="conversationList" class="conversation-list"></div>
-      <div class="sidebar-footer">
-        <button id="logoutBtn" class="ghost-btn" type="button">Log out</button>
-      </div>
+
+        <button id="newChatBtn" class="new-chat-btn">
+            + New Chat
+        </button>
+
+        <div id="conversationList" class="conversation-list"></div>
+
+        <div class="sidebar-footer">
+            <button id="logoutBtn" class="ghost-btn">
+                Log out
+            </button>
+        </div>
+
     </aside>
 
+
     <div class="app">
-      <header class="topbar">
-        <div class="brand">
-          <span class="brand-dot"></span>
-          <h1 id="assistantName">Jarvis</h1>
-          <span id="premiumBadge" class="premium-badge hidden">Premium</span>
-          <span id="usageBadge" class="usage-badge">Loading...</span>
-        </div>
-        <div class="topbar-right">
-          <time id="clock" class="clock"></time>
-          <button id="helpBtn" class="ghost-btn" type="button">Help</button>
-          <button id="clearBtn" class="ghost-btn" type="button">Clear</button>
-          <button id="premiumBtn" class="ghost-btn" type="button">⭐ Upgrade</button>
-          <button id="settingsBtn" class="ghost-btn" type="button">⚙ Settings</button>
-        </div>
-      </header>
 
-      <main class="chat-wrap">
-        <div id="chatLog" class="chat-log" aria-live="polite"></div>
-      </main>
+        <header class="topbar">
 
-      <footer class="composer">
-        <div class="composer-row">
-          <button id="webcamBtn" class="icon-btn" type="button" title="Use webcam">📷</button>
-          <button id="screenBtn" class="icon-btn" type="button" title="Share screen">🖥</button>
-          <button id="uploadBtn" class="icon-btn" type="button" title="Upload image">📎</button>
-          <input id="fileInput" type="file" accept="image/*" hidden />
-          <input id="textInput" class="text-input" type="text"
-                 placeholder="Ask Jarvis something, or type 'help'..." autocomplete="off" />
-          <button id="micBtn" class="icon-btn" type="button" title="Voice input">🎤</button>
-          <button id="sendBtn" class="send-btn" type="button">Send</button>
-        </div>
-      </footer>
+            <div class="brand">
+
+                <span class="brand-dot"></span>
+
+                <h1 id="assistantName">
+                    Samchat
+                </h1>
+
+                <span
+                    id="premiumBadge"
+                    class="premium-badge hidden">
+                    👑 PREMIUM
+                </span>
+
+                <span
+                    id="usageBadge"
+                    class="usage-badge">
+                    Loading...
+                </span>
+
+            </div>
+
+
+            <div class="topbar-right">
+
+                <time id="clock"></time>
+
+                <button
+                    id="helpBtn"
+                    class="ghost-btn">
+                    Help
+                </button>
+
+                <button
+                    id="clearBtn"
+                    class="ghost-btn">
+                    Clear
+                </button>
+
+                <button
+                    id="premiumBtn"
+                    class="premium-btn">
+                    ⭐ Upgrade
+                </button>
+
+                <button
+                    id="settingsBtn"
+                    class="ghost-btn">
+                    ⚙ Settings
+                </button>
+
+            </div>
+
+        </header>
+
+
+
+        <main class="chat-wrap">
+
+            <div
+                id="chatLog"
+                class="chat-log">
+            </div>
+
+        </main>
+
+
+
+        <footer class="composer">
+
+            <div class="composer-row">
+
+                <button id="webcamBtn" class="icon-btn">📷</button>
+
+                <button id="screenBtn" class="icon-btn">🖥</button>
+
+                <button id="uploadBtn" class="icon-btn">📎</button>
+
+                <input
+                    id="fileInput"
+                    type="file"
+                    accept="image/*"
+                    hidden>
+
+                <input
+                    id="textInput"
+                    class="text-input"
+                    autocomplete="off"
+                    placeholder="Message Samchat...">
+
+                <button
+                    id="micBtn"
+                    class="icon-btn">
+                    🎤
+                </button>
+
+                <button
+                    id="sendBtn"
+                    class="send-btn">
+                    Send
+                </button>
+
+            </div>
+
+        </footer>
+
     </div>
-  </div>
 
-  <div id="premiumModal" class="modal hidden">
-    <div class="modal-card premium-card">
-      <h2>Upgrade to Premium</h2>
-      <p class="modal-note">Pay ₹200 by UPI. After admin approval, premium will be activated.</p>
-      <div class="premium-info">
-        <div><strong>Price:</strong> ₹<span id="premiumPrice">200</span></div>
-        <div><strong>Validity:</strong> <span id="premiumDays">30</span> days</div>
-        <div><strong>Status:</strong> <span id="premiumStatusText">Not started</span></div>
-      </div>
-      <div class="modal-actions premium-actions">
-        <button id="premiumPayBtn" class="primary-btn" type="button">Pay with UPI</button>
-        <button id="premiumTxnBtn" class="ghost-btn" type="button">Submit txn ref</button>
-        <button id="premiumCloseBtn" class="ghost-btn" type="button">Close</button>
-      </div>
-      <div id="premiumLinkBox" class="premium-link-box hidden">
-        <a id="premiumUpiLink" href="#" target="_blank" rel="noopener">Open UPI payment</a>
-      </div>
-    </div>
-  </div>
+</div>
 
-  <div id="webcamModal" class="modal hidden">
-    <div class="modal-card">
-      <h2>Webcam</h2>
-      <video id="webcamVideo" autoplay playsinline></video>
-      <canvas id="webcamCanvas" hidden></canvas>
-      <div class="modal-actions">
-        <button id="webcamCapture" class="primary-btn" type="button">Capture</button>
-        <button id="webcamCancel" class="ghost-btn" type="button">Cancel</button>
-      </div>
-    </div>
-  </div>
 
-  <div id="settingsModal" class="modal hidden">
-    <div class="modal-card">
-      <h2>Settings</h2>
-      <label>Your name
-        <input id="setUserName" type="text" />
-      </label>
-      <label>Assistant name
-        <input id="setAssistantName" type="text" />
-      </label>
-      <label>Default city
-        <input id="setCity" type="text" />
-      </label>
-      <label>News country code
-        <input id="setNewsCountry" type="text" maxlength="2" placeholder="in" />
-      </label>
-      <label>Groq API key
-        <input id="setGroqKey" type="password" placeholder="gsk_..." />
-      </label>
-      <label>Groq chat model
-        <input id="setGroqModel" type="text" placeholder="llama-3.3-70b-versatile" />
-      </label>
-      <div class="modal-actions">
-        <button id="settingsSave" class="primary-btn" type="button">Save</button>
-        <button id="settingsCancel" class="ghost-btn" type="button">Cancel</button>
-      </div>
-    </div>
-  </div>
-  <script src="/static/app.js"></script>
+
+<!-- PREMIUM MODAL -->
+
+<div
+id="premiumModal"
+class="modal hidden">
+
+<div class="modal-card premium-card">
+
+<h2>
+Upgrade to Premium 👑
+</h2>
+
+<p>
+
+Unlimited chats
+
+<br>
+
+Image Analysis
+
+<br>
+
+Priority AI
+
+<br>
+
+₹200 / 30 Days
+
+</p>
+
+<hr>
+
+<div class="premium-price">
+
+₹200
+
+</div>
+
+<button
+id="premiumPayBtn"
+class="primary-btn">
+
+Pay with UPI
+
+</button>
+
+<br><br>
+
+<input
+id="txnInput"
+placeholder="Enter UPI Transaction ID">
+
+<br><br>
+
+<button
+id="submitTxnBtn"
+class="primary-btn">
+
+Submit Transaction
+
+</button>
+
+<button
+id="closePremiumBtn"
+class="ghost-btn">
+
+Close
+
+</button>
+
+</div>
+
+</div>
+
+
+
+<!-- Webcam -->
+
+<div id="webcamModal" class="modal hidden">
+
+<div class="modal-card">
+
+<h2>Webcam</h2>
+
+<video
+id="webcamVideo"
+autoplay
+playsinline></video>
+
+<canvas
+id="webcamCanvas"
+hidden></canvas>
+
+<div class="modal-actions">
+
+<button
+id="webcamCapture"
+class="primary-btn">
+
+Capture
+
+</button>
+
+<button
+id="webcamCancel"
+class="ghost-btn">
+
+Cancel
+
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+
+
+<!-- Settings -->
+
+<div
+id="settingsModal"
+class="modal hidden">
+
+<div class="modal-card">
+
+<h2>
+
+Settings
+
+</h2>
+
+<label>
+
+Your Name
+
+<input
+id="setUserName">
+
+</label>
+
+<label>
+
+Assistant Name
+
+<input
+id="setAssistantName">
+
+</label>
+
+<label>
+
+City
+
+<input
+id="setCity">
+
+</label>
+
+<label>
+
+News Country
+
+<input
+id="setNewsCountry">
+
+</label>
+
+<label>
+
+Groq API Key
+
+<input
+id="setGroqKey"
+type="password">
+
+</label>
+
+<label>
+
+Groq Model
+
+<input
+id="setGroqModel">
+
+</label>
+
+<div class="modal-actions">
+
+<button
+id="settingsSave"
+class="primary-btn">
+
+Save
+
+</button>
+
+<button
+id="settingsCancel"
+class="ghost-btn">
+
+Cancel
+
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+<script src="/static/app.js"></script>
+
 </body>
+
 </html>
