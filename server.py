@@ -136,10 +136,25 @@ def auth_me(email: str = Depends(require_user)):
 
 class ChatIn(BaseModel):
     message: str
+    conversation_id: str | None = None
 
 
 class ChatOut(BaseModel):
     reply: str
+    conversation_id: str
+    title: str
+
+
+class ConversationOut(BaseModel):
+    id: str
+    title: str
+    created: str | None = None
+    updated: str | None = None
+    message_count: int = 0
+
+
+class RenameIn(BaseModel):
+    title: str
 
 
 class SettingsIn(BaseModel):
@@ -163,12 +178,19 @@ def chat(payload: ChatIn, email: str = Depends(require_user)):
     text = payload.message.strip()
     if not text:
         raise HTTPException(status_code=400, detail="message is empty")
+
+    conv_id = payload.conversation_id
+    if not conv_id or not memory.get_conversation(email, conv_id):
+        conv_id = memory.create_conversation(email)
+
     try:
-        reply_text = _assistant.process(text, user=email)
+        reply_text = _assistant.process(text, user=email, conversation_id=conv_id)
     except Exception:
         log.exception("assistant.process failed")
         raise HTTPException(status_code=500, detail="internal error handling that message")
-    return ChatOut(reply=reply_text)
+
+    conv = memory.get_conversation(email, conv_id) or {}
+    return ChatOut(reply=reply_text, conversation_id=conv_id, title=conv.get("title", "New chat"))
 
 
 MAX_IMAGE_BYTES = 15 * 1024 * 1024  # 15MB -- well under Groq's 20MB request limit
@@ -179,6 +201,7 @@ async def vision_analyze(
     image: UploadFile = File(...),
     prompt: str = Form(None),
     source: str = Form("image"),
+    conversation_id: str = Form(None),
     email: str = Depends(require_user),
 ):
     """Analyze an uploaded/captured image (file upload, browser webcam
@@ -189,17 +212,63 @@ async def vision_analyze(
         raise HTTPException(status_code=400, detail="empty image")
     if len(data) > MAX_IMAGE_BYTES:
         raise HTTPException(status_code=413, detail="image too large (max 15MB)")
+
+    conv_id = conversation_id
+    if not conv_id or not memory.get_conversation(email, conv_id):
+        conv_id = memory.create_conversation(email)
+
     try:
-        reply_text = _assistant.process_image(data, prompt=prompt, source=source, user=email)
+        reply_text = _assistant.process_image(data, prompt=prompt, source=source, user=email, conversation_id=conv_id)
     except Exception:
         log.exception("assistant.process_image failed")
         raise HTTPException(status_code=500, detail="internal error analyzing that image")
-    return ChatOut(reply=reply_text)
+
+    conv = memory.get_conversation(email, conv_id) or {}
+    return ChatOut(reply=reply_text, conversation_id=conv_id, title=conv.get("title", "New chat"))
 
 
 @app.get("/api/history")
 def history(limit: int = 50, email: str = Depends(require_user)):
+    # Legacy single-history endpoint, kept for backward compatibility.
+    # The sidebar uses /api/conversations instead.
     return memory.get_history(limit=limit, user=email)
+
+
+# ------------------------------------------------------------- conversations
+
+@app.get("/api/conversations", response_model=list[ConversationOut])
+def list_conversations_endpoint(email: str = Depends(require_user)):
+    return memory.list_conversations(email)
+
+
+@app.post("/api/conversations")
+def new_conversation_endpoint(email: str = Depends(require_user)):
+    conv_id = memory.create_conversation(email)
+    return memory.get_conversation(email, conv_id)
+
+
+@app.get("/api/conversations/{conv_id}")
+def get_conversation_endpoint(conv_id: str, email: str = Depends(require_user)):
+    conv = memory.get_conversation(email, conv_id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="conversation not found")
+    return conv
+
+
+@app.patch("/api/conversations/{conv_id}")
+def rename_conversation_endpoint(conv_id: str, payload: RenameIn, email: str = Depends(require_user)):
+    ok = memory.rename_conversation(email, conv_id, payload.title)
+    if not ok:
+        raise HTTPException(status_code=404, detail="conversation not found")
+    return memory.get_conversation(email, conv_id)
+
+
+@app.delete("/api/conversations/{conv_id}")
+def delete_conversation_endpoint(conv_id: str, email: str = Depends(require_user)):
+    ok = memory.delete_conversation(email, conv_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="conversation not found")
+    return {"ok": True}
 
 
 @app.get("/api/reminders")
