@@ -21,17 +21,22 @@
         <div class="brand">
           <span class="brand-dot"></span>
           <h1 id="assistantName">Jarvis</h1>
+          <span id="premiumBadge" class="premium-badge hidden">Premium</span>
+          <span id="usageBadge" class="usage-badge">Loading...</span>
         </div>
         <div class="topbar-right">
           <time id="clock" class="clock"></time>
           <button id="helpBtn" class="ghost-btn" type="button">Help</button>
           <button id="clearBtn" class="ghost-btn" type="button">Clear</button>
+          <button id="premiumBtn" class="ghost-btn" type="button">⭐ Upgrade</button>
           <button id="settingsBtn" class="ghost-btn" type="button">⚙ Settings</button>
         </div>
       </header>
+
       <main class="chat-wrap">
         <div id="chatLog" class="chat-log" aria-live="polite"></div>
       </main>
+
       <footer class="composer">
         <div class="composer-row">
           <button id="webcamBtn" class="icon-btn" type="button" title="Use webcam">📷</button>
@@ -47,7 +52,26 @@
     </div>
   </div>
 
-  <!-- Webcam capture overlay -->
+  <div id="premiumModal" class="modal hidden">
+    <div class="modal-card premium-card">
+      <h2>Upgrade to Premium</h2>
+      <p class="modal-note">Pay ₹200 by UPI. After admin approval, premium will be activated.</p>
+      <div class="premium-info">
+        <div><strong>Price:</strong> ₹<span id="premiumPrice">200</span></div>
+        <div><strong>Validity:</strong> <span id="premiumDays">30</span> days</div>
+        <div><strong>Status:</strong> <span id="premiumStatusText">Not started</span></div>
+      </div>
+      <div class="modal-actions premium-actions">
+        <button id="premiumPayBtn" class="primary-btn" type="button">Pay with UPI</button>
+        <button id="premiumTxnBtn" class="ghost-btn" type="button">Submit txn ref</button>
+        <button id="premiumCloseBtn" class="ghost-btn" type="button">Close</button>
+      </div>
+      <div id="premiumLinkBox" class="premium-link-box hidden">
+        <a id="premiumUpiLink" href="#" target="_blank" rel="noopener">Open UPI payment</a>
+      </div>
+    </div>
+  </div>
+
   <div id="webcamModal" class="modal hidden">
     <div class="modal-card">
       <h2>Webcam</h2>
@@ -59,7 +83,7 @@
       </div>
     </div>
   </div>
-  <!-- Settings modal -->
+
   <div id="settingsModal" class="modal hidden">
     <div class="modal-card">
       <h2>Settings</h2>
