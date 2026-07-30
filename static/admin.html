@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width,initial-scale=1.0">
+
+<title>Samchat Admin Panel</title>
+
+<link rel="stylesheet"
+href="/static/style.css">
+
+<link rel="preconnect"
+href="https://fonts.googleapis.com">
+
+<link rel="preconnect"
+href="https://fonts.gstatic.com"
+crossorigin>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+rel="stylesheet">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Inter,sans-serif;
+}
+
+body{
+
+background:#0f1117;
+
+color:#fff;
+
+overflow:hidden;
+
+}
+
+.admin{
+
+display:flex;
+
+height:100vh;
+
+width:100%;
+
+}
+
+/* ---------------- Sidebar ---------------- */
+
+.sidebar{
+
+width:260px;
+
+background:#181b23;
+
+display:flex;
+
+flex-direction:column;
+
+border-right:1px solid #292d39;
+
+}
+
+.logo{
+
+padding:25px;
+
+font-size:25px;
+
+font-weight:700;
+
+text-align:center;
+
+border-bottom:1px solid #292d39;
+
+}
+
+.logo span{
+
+color:#00d4ff;
+
+}
+
+.menu{
+
+flex:1;
+
+padding:20px;
+
+}
+
+.menu button{
+
+width:100%;
+
+padding:14px;
+
+margin-bottom:12px;
+
+border:none;
+
+border-radius:10px;
+
+background:#232734;
+
+color:white;
+
+cursor:pointer;
+
+font-size:15px;
+
+transition:.25s;
+
+}
+
+.menu button:hover{
+
+background:#2d3343;
+
+}
+
+.logout{
+
+padding:20px;
+
+}
+
+.logout button{
+
+width:100%;
+
+padding:14px;
+
+border:none;
+
+border-radius:10px;
+
+background:#ff4545;
+
+color:white;
+
+cursor:pointer;
+
+font-weight:600;
+
+}
+
+/* ---------------- Content ---------------- */
+
+.content{
+
+flex:1;
+
+display:flex;
+
+flex-direction:column;
+
+overflow:auto;
+
+}
+
+.topbar{
+
+height:75px;
+
+background:#181b23;
+
+display:flex;
+
+align-items:center;
+
+justify-content:space-between;
+
+padding:0 25px;
+
+border-bottom:1px solid #292d39;
+
+}
+
+.topbar h2{
+
+font-size:25px;
+
+}
+
+.topbar-right{
+
+display:flex;
+
+gap:15px;
+
+align-items:center;
+
+}
+
+.topbar-right button{
+
+padding:10px 18px;
+
+border:none;
+
+border-radius:8px;
+
+cursor:pointer;
+
+background:#00a8ff;
+
+color:white;
+
+}
+
+/* ---------------- Dashboard ---------------- */
+
+.dashboard{
+
+padding:30px;
+
+display:grid;
+
+grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+
+gap:20px;
+
+}
+
+.card{
+
+background:#181b23;
+
+padding:25px;
+
+border-radius:16px;
+
+box-shadow:0 0 20px rgba(0,0,0,.25);
+
+}
+
+.card h3{
+
+font-size:15px;
+
+color:#aaa;
+
+margin-bottom:15px;
+
+}
+
+.card h1{
+
+font-size:38px;
+
+margin-bottom:5px;
+
+}
+
+.card small{
+
+color:#888;
+
+}
+
+.green{
+
+color:#4ade80;
+
+}
+
+.red{
+
+color:#ff6b6b;
+
+}
+
+.blue{
+
+color:#38bdf8;
+
+}
+
+.yellow{
+
+color:#ffd93d;
+
+}
+
+/* ---------------- Main ---------------- */
+
+.mainSection{
+
+padding:30px;
+
+}
+
+.hidden{
+
+display:none;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="admin">
+
+<!-- Sidebar -->
+
+<div class="sidebar">
+
+<div class="logo">
+
+<span>Sam</span>chat
+
+</div>
+
+<div class="menu">
+
+<button id="dashboardBtn">
+📊 Dashboard
+</button>
+
+<button id="usersBtn">
+👥 Users
+</button>
+
+<button id="paymentsBtn">
+💳 Payments
+</button>
+
+<button id="analyticsBtn">
+📈 Analytics
+</button>
+
+<button id="broadcastBtn">
+📢 Broadcast
+</button>
+
+<button id="settingsBtn">
+⚙ Settings
+</button>
+
+</div>
+
+<div class="logout">
+
+<button id="logoutAdmin">
+Logout
+</button>
+
+</div>
+
+</div>
+
+<!-- Content -->
+
+<div class="content">
+
+<div class="topbar">
+
+<h2>
+
+Admin Dashboard
+
+</h2>
+
+<div class="topbar-right">
+
+<span id="adminEmail">
+
+Administrator
+
+</span>
+
+<button id="refreshDashboard">
+
+Refresh
+
+</button>
+
+</div>
+
+</div>
+
+<!-- Dashboard -->
+
+<div
+id="dashboardPage"
+class="mainSection">
+
+<div class="dashboard">
+
+<div class="card">
+
+<h3>Total Users</h3>
+
+<h1
+id="totalUsers"
+class="blue">
+
+0
+
+</h1>
+
+<small>
+
+Registered users
+
+</small>
+
+</div>
+
+<div class="card">
+
+<h3>Premium Users</h3>
+
+<h1
+id="premiumUsers"
+class="yellow">
+
+0
+
+</h1>
+
+<small>
+
+Active premium
+
+</small>
+
+</div>
+
+<div class="card">
+
+<h3>Total Revenue</h3>
+
+<h1
+id="totalRevenue"
+class="green">
+
+₹0
+
+</h1>
+
+<small>
+
+Lifetime revenue
+
+</small>
+
+</div>
+
+<div class="card">
+
+<h3>Pending Payments</h3>
+
+<h1
+id="pendingPayments"
+class="red">
+
+0
+
+</h1>
+
+<small>
+
+Awaiting approval
+
+</small>
+
+</div>
+
+<div class="card">
+
+<h3>Today's Chats</h3>
+
+<h1
+id="todayChats">
+
+0
+
+</h1>
+
+<small>
+
+Messages today
+
+</small>
+
+</div>
+
+<div class="card">
+
+<h3>Total Conversations</h3>
+
+<h1
+id="totalChats">
+
+0
+
+</h1>
+
+<small>
+
+All chats
+
+</small>
+
+</div>
+
+</div>
+
+</div>
+
+<!-- Remaining pages will be added in Part 2 -->
+<!-- ===========================================================
+     USERS PAGE
+=========================================================== -->
+
+<div
+id="usersPage"
+class="mainSection hidden">
+
+<h2
+style="margin-bottom:20px;">
+
+👥 User Management
+
+</h2>
+
+<div
+style="
+display:flex;
+gap:15px;
+margin-bottom:20px;
+flex-wrap:wrap;
+">
+
+<input
+id="searchUser"
+placeholder="Search by Name or Email..."
+style="
+flex:1;
+min-width:250px;
+padding:12px;
+border:none;
+border-radius:10px;
+background:#222733;
+color:white;
+font-size:15px;
+">
+
+<button
+id="refreshUsers"
+style="
+padding:12px 22px;
+border:none;
+border-radius:10px;
+background:#00b4ff;
+color:white;
+cursor:pointer;
+">
+
+Refresh
+
+</button>
+
+<button
+id="exportUsers"
+style="
+padding:12px 22px;
+border:none;
+border-radius:10px;
+background:#16a34a;
+color:white;
+cursor:pointer;
+">
+
+Export CSV
+
+</button>
+
+</div>
+
+
+<div
+style="
+overflow:auto;
+border-radius:15px;
+">
+
+<table
+id="usersTable"
+style="
+width:100%;
+border-collapse:collapse;
+background:#181b23;
+">
+
+<thead>
+
+<tr
+style="
+background:#202532;
+">
+
+<th style="padding:15px;">Name</th>
+
+<th>Email</th>
+
+<th>Premium</th>
+
+<th>Banned</th>
+
+<th>Chats</th>
+
+<th>Joined</th>
+
+<th style="width:350px;">
+Actions
+</th>
+
+</tr>
+
+</thead>
+
+<tbody id="usersBody">
+
+<tr>
+
+<td
+colspan="7"
+style="
+padding:40px;
+text-align:center;
+color:#777;
+">
+
+Loading users...
+
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+
+
+<!-- ===========================================================
+     USER DETAILS MODAL
+=========================================================== -->
+
+<div
+id="userModal"
+class="hidden"
+style="
+position:fixed;
+left:0;
+top:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.65);
+display:flex;
+justify-content:center;
+align-items:center;
+z-index:9999;
+">
+
+<div
+style="
+width:650px;
+max-width:95%;
+background:#181b23;
+border-radius:16px;
+padding:25px;
+">
+
+<h2
+style="margin-bottom:20px;">
+
+User Details
+
+</h2>
+
+<div
+id="userInfo">
+
+Loading...
+
+</div>
+
+<div
+style="
+margin-top:25px;
+text-align:right;
+">
+
+<button
+id="closeUserModal"
+style="
+padding:12px 20px;
+border:none;
+border-radius:10px;
+background:#ef4444;
+color:white;
+cursor:pointer;
+">
+
+Close
+
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+
+
+<script>
+
+/* ===========================================================
+   USERS PAGE
+=========================================================== */
+
+const dashboardPage=document.getElementById("dashboardPage");
+const usersPage=document.getElementById("usersPage");
+
+document.getElementById("usersBtn").onclick=()=>{
+
+dashboardPage.classList.add("hidden");
+
+usersPage.classList.remove("hidden");
+
+loadUsers();
+
+};
+
+
+
+document.getElementById("dashboardBtn").onclick=()=>{
+
+usersPage.classList.add("hidden");
+
+dashboardPage.classList.remove("hidden");
+
+};
+
+
+
+document.getElementById("refreshUsers").onclick=loadUsers;
+
+document.getElementById("exportUsers").onclick=exportUsersCSV;
+
+
+
+document.getElementById("searchUser").addEventListener("input",e=>{
+
+const rows=document.querySelectorAll("#usersBody tr");
+
+const text=e.target.value.toLowerCase();
+
+rows.forEach(r=>{
+
+r.style.display=r.innerText.toLowerCase().includes(text)
+?"":"none";
+
+});
+
+});
+
+
+
+async function loadUsers(){
+
+const users=await window.loadUsers();
+
+const body=document.getElementById("usersBody");
+
+body.innerHTML="";
+
+if(users.length===0){
+
+body.innerHTML=`
+<tr>
+<td colspan="7"
+style="padding:40px;text-align:center;">
+No Users Found
+</td>
+</tr>`;
+
+return;
+
+}
+
+users.forEach(u=>{
+
+const tr=document.createElement("tr");
+
+tr.innerHTML=`
+
+<td>${u.name||"-"}</td>
+
+<td>${u.email}</td>
+
+<td>${u.premium?"👑 Yes":"No"}</td>
+
+<td>${u.banned?"🚫 Yes":"No"}</td>
+
+<td>${u.chat_count||0}</td>
+
+<td>${u.created_at||"-"}</td>
+
+<td>
+
+<button onclick="showUser('${u.email}')">
+View
+</button>
+
+<button onclick="makePremium('${u.email}')">
+Premium
+</button>
+
+<button onclick="removePremium('${u.email}')">
+Remove
+</button>
+
+<button onclick="banUser('${u.email}')">
+Ban
+</button>
+
+<button onclick="unbanUser('${u.email}')">
+Unban
+</button>
+
+<button onclick="deleteUser('${u.email}')">
+Delete
+</button>
+
+</td>
+
+`;
+
+body.appendChild(tr);
+
+});
+
+}
+
+
+
+async function showUser(email){
+
+const data=await getUserDetails(email);
+
+document.getElementById("userInfo").innerHTML=`
+
+<p><b>Name:</b> ${data.name}</p>
+
+<p><b>Email:</b> ${data.email}</p>
+
+<p><b>Premium:</b> ${data.premium}</p>
+
+<p><b>Banned:</b> ${data.banned}</p>
+
+<p><b>Total Chats:</b> ${data.chat_count}</p>
+
+<p><b>Joined:</b> ${data.created_at}</p>
+
+`;
+
+document.getElementById("userModal")
+.classList.remove("hidden");
+
+}
+
+
+
+document.getElementById("closeUserModal").onclick=()=>{
+
+document.getElementById("userModal")
+.classList.add("hidden");
+
+};
+
+</script>
+<!-- ===========================================================
+     PAYMENTS PAGE
+=========================================================== -->
+
+<div id="paymentsPage" class="mainSection hidden">
+
+<h2 style="margin-bottom:20px;">
+💳 Pending Payments
+</h2>
+
+<div style="overflow:auto;">
+
+<table id="paymentsTable"
+style="
+width:100%;
+border-collapse:collapse;
+background:#181b23;
+border-radius:15px;
+">
+
+<thead>
+
+<tr style="background:#202532;">
+
+<th style="padding:15px;">Order ID</th>
+
+<th>Email</th>
+
+<th>Transaction ID</th>
+
+<th>Amount</th>
+
+<th>Status</th>
+
+<th>Action</th>
+
+</tr>
+
+</thead>
+
+<tbody id="paymentsBody">
+
+<tr>
+
+<td colspan="6"
+style="
+padding:40px;
+text-align:center;
+color:#777;
+">
+
+Loading payments...
+
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+
+<!-- ===========================================================
+     ANALYTICS PAGE
+=========================================================== -->
+
+<div id="analyticsPage"
+class="mainSection hidden">
+
+<h2 style="margin-bottom:25px;">
+
+📈 Analytics
+
+</h2>
+
+
+<div class="dashboard">
+
+<div class="card">
+
+<h3>Total Revenue</h3>
+
+<h1 id="analyticsRevenue">
+
+₹0
+
+</h1>
+
+</div>
+
+
+<div class="card">
+
+<h3>Today's Users</h3>
+
+<h1 id="analyticsUsers">
+
+0
+
+</h1>
+
+</div>
+
+
+<div class="card">
+
+<h3>Today's Chats</h3>
+
+<h1 id="analyticsChats">
+
+0
+
+</h1>
+
+</div>
+
+
+<div class="card">
+
+<h3>Premium Users</h3>
+
+<h1 id="analyticsPremium">
+
+0
+
+</h1>
+
+</div>
+
+</div>
+
+
+<div
+style="
+margin-top:35px;
+background:#181b23;
+padding:25px;
+border-radius:16px;
+">
+
+<h3>
+
+Activity Summary
+
+</h3>
+
+<br>
+
+<div id="analyticsSummary">
+
+Loading...
+
+</div>
+
+</div>
+
+</div>
+
+
+
+<script>
+
+/* ===========================================================
+   MENU
+=========================================================== */
+
+paymentsBtn.onclick=()=>{
+
+dashboardPage.classList.add("hidden");
+
+usersPage.classList.add("hidden");
+
+analyticsPage.classList.add("hidden");
+
+paymentsPage.classList.remove("hidden");
+
+loadPayments();
+
+};
+
+
+
+analyticsBtn.onclick=()=>{
+
+dashboardPage.classList.add("hidden");
+
+usersPage.classList.add("hidden");
+
+paymentsPage.classList.add("hidden");
+
+analyticsPage.classList.remove("hidden");
+
+loadAnalytics();
+
+};
+
+
+
+/* ===========================================================
+   PAYMENTS
+=========================================================== */
+
+async function loadPayments(){
+
+const payments=await refreshPayments();
+
+const body=document.getElementById("paymentsBody");
+
+body.innerHTML="";
+
+if(payments.length===0){
+
+body.innerHTML=`
+
+<tr>
+
+<td colspan="6"
+
+style="padding:40px;text-align:center;">
+
+No Pending Payments
+
+</td>
+
+</tr>
+
+`;
+
+return;
+
+}
+
+
+
+payments.forEach(p=>{
+
+const tr=document.createElement("tr");
+
+tr.innerHTML=`
+
+<td>${p.order_id}</td>
+
+<td>${p.email}</td>
+
+<td>${p.txn_ref}</td>
+
+<td>₹${p.amount}</td>
+
+<td>${p.status}</td>
+
+<td>
+
+<button
+onclick="approve('${p.order_id}')">
+
+Approve
+
+</button>
+
+<button
+onclick="reject('${p.order_id}')">
+
+Reject
+
+</button>
+
+</td>
+
+`;
+
+body.appendChild(tr);
+
+});
+
+}
+
+
+
+/* ===========================================================
+   ANALYTICS
+=========================================================== */
+
+async function loadAnalytics(){
+
+const data=await refreshAnalytics();
+
+document.getElementById("analyticsRevenue").innerHTML=
+
+"₹"+(data.revenue||0);
+
+document.getElementById("analyticsUsers").innerHTML=
+
+data.today_users||0;
+
+document.getElementById("analyticsChats").innerHTML=
+
+data.today_chats||0;
+
+document.getElementById("analyticsPremium").innerHTML=
+
+data.premium_users||0;
+
+document.getElementById("analyticsSummary").innerHTML=`
+
+<p>
+
+<b>Total Users:</b>
+
+${data.total_users||0}
+
+</p>
+
+<br>
+
+<p>
+
+<b>Total Chats:</b>
+
+${data.total_chats||0}
+
+</p>
+
+<br>
+
+<p>
+
+<b>Revenue:</b>
+
+₹${data.revenue||0}
+
+</p>
+
+<br>
+
+<p>
+
+<b>Pending Payments:</b>
+
+${data.pending||0}
+
+</p>
+
+`;
+
+}
+
+</script>
+<!-- ===========================================================
+     BROADCAST PAGE
+=========================================================== -->
+
+<div
+id="broadcastPage"
+class="mainSection hidden">
+
+<h2 style="margin-bottom:20px;">
+
+📢 Broadcast Message
+
+</h2>
+
+<textarea
+id="broadcastMessage"
+
+placeholder="Write announcement..."
+
+style="
+width:100%;
+height:180px;
+padding:15px;
+border:none;
+border-radius:12px;
+background:#181b23;
+color:white;
+font-size:15px;
+resize:none;
+"></textarea>
+
+<br><br>
+
+<button
+id="sendBroadcastBtn"
+
+style="
+padding:14px 25px;
+background:#00b4ff;
+border:none;
+border-radius:10px;
+color:white;
+cursor:pointer;
+">
+
+Send Broadcast
+
+</button>
+
+</div>
+
+
+
+<!-- ===========================================================
+     SETTINGS PAGE
+=========================================================== -->
+
+<div
+id="settingsPage"
+class="mainSection hidden">
+
+<h2 style="margin-bottom:20px;">
+
+⚙ Admin Settings
+
+</h2>
+
+<div class="card">
+
+<button id="refreshAll">
+
+🔄 Refresh Dashboard
+
+</button>
+
+<br><br>
+
+<button id="exportPayments">
+
+📥 Export Payments CSV
+
+</button>
+
+<br><br>
+
+<button id="logoutSystem">
+
+🚪 Logout
+
+</button>
+
+</div>
+
+</div>
+
+
+
+<script>
+
+/* ===========================================================
+   PAGE SWITCHING
+=========================================================== */
+
+broadcastBtn.onclick=()=>{
+
+dashboardPage.classList.add("hidden");
+usersPage.classList.add("hidden");
+paymentsPage.classList.add("hidden");
+analyticsPage.classList.add("hidden");
+settingsPage.classList.add("hidden");
+
+broadcastPage.classList.remove("hidden");
+
+};
+
+
+
+settingsBtn.onclick=()=>{
+
+dashboardPage.classList.add("hidden");
+usersPage.classList.add("hidden");
+paymentsPage.classList.add("hidden");
+analyticsPage.classList.add("hidden");
+broadcastPage.classList.add("hidden");
+
+settingsPage.classList.remove("hidden");
+
+};
+
+
+
+/* ===========================================================
+   BROADCAST
+=========================================================== */
+
+sendBroadcastBtn.onclick=async()=>{
+
+const msg=broadcastMessage.value.trim();
+
+if(msg===""){
+
+alert("Write message");
+
+return;
+
+}
+
+try{
+
+await sendBroadcast(msg);
+
+alert("Broadcast Sent");
+
+broadcastMessage.value="";
+
+}catch{
+
+alert("Broadcast Failed");
+
+}
+
+};
+
+
+
+/* ===========================================================
+   SETTINGS
+=========================================================== */
+
+refreshAll.onclick=()=>{
+
+refreshAdmin();
+
+};
+
+
+
+exportPayments.onclick=()=>{
+
+exportPaymentsCSV();
+
+};
+
+
+
+logoutSystem.onclick=()=>{
+
+adminLogout();
+
+};
+
+
+
+logoutAdmin.onclick=()=>{
+
+adminLogout();
+
+};
+
+
+
+refreshDashboard.onclick=()=>{
+
+refreshAdmin();
+
+};
+
+
+
+/* ===========================================================
+   DASHBOARD UPDATE
+=========================================================== */
+
+async function updateDashboard(){
+
+const d=await refreshDashboard();
+
+document.getElementById("totalUsers").innerHTML=d.total_users||0;
+
+document.getElementById("premiumUsers").innerHTML=d.premium_users||0;
+
+document.getElementById("totalRevenue").innerHTML=
+
+"₹"+(d.total_revenue||0);
+
+document.getElementById("pendingPayments").innerHTML=
+
+d.pending_payments||0;
+
+document.getElementById("todayChats").innerHTML=
+
+d.today_chats||0;
+
+document.getElementById("totalChats").innerHTML=
+
+d.total_chats||0;
+
+}
+
+
+
+/* ===========================================================
+   STARTUP
+=========================================================== */
+
+window.onload=async()=>{
+
+if(!requireAdmin()) return;
+
+await updateDashboard();
+
+};
+
+
+
+setInterval(async()=>{
+
+await updateDashboard();
+
+},30000);
+</div>
+<script src="/static/admin.js"></script>
+</body>
+</html>
