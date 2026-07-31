@@ -461,3 +461,530 @@ def index(request: Request, email: str | None = Depends(get_current_user)):
 def _on_startup():
     reminders.rearm_pending()
     log.info("Jarvis web server started")
+# ---------------------------------------------------------------------
+# Admin -- payment approval (all gated behind require_admin)
+# ---------------------------------------------------------------------
+# ---------------------------------------------------------------------
+# Admin Dashboard
+# ---------------------------------------------------------------------
+
+from fastapi import Body
+
+
+@app.get("/api/admin/dashboard")
+def admin_dashboard(_: bool = Depends(require_admin)):
+    try:
+        stats = {
+            "total_users": users.total_users(),
+            "premium_users": users.premium_users(),
+            "free_users": users.free_users(),
+            "pending_payments": len(payments.list_pending_orders()),
+            "approved_payments": len(payments.approved_orders()),
+            "rejected_payments": len(payments.rejected_orders()),
+            "total_revenue": payments.total_revenue(),
+            "today_messages": 0,
+            "total_messages": 0
+        }
+
+        return {
+            "success": True,
+            "stats": stats
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+
+# ---------------------------------------------------------------------
+# Admin Users
+# ---------------------------------------------------------------------
+
+@app.get("/api/admin/users")
+def admin_users(_: bool = Depends(require_admin)):
+    return {
+        "success": True,
+        "users": users.list_users()
+    }
+
+
+@app.post("/api/admin/users/reset")
+def admin_reset_usage(
+    email: str = Body(..., embed=True),
+    _: bool = Depends(require_admin)
+):
+    try:
+        users.reset_usage(email)
+
+        return {
+            "success": True,
+            "message": "Usage reset."
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
+
+
+@app.post("/api/admin/users/delete")
+def admin_delete_user(
+    email: str = Body(..., embed=True),
+    _: bool = Depends(require_admin)
+):
+    try:
+        users.delete_user(email)
+
+        return {
+            "success": True,
+            "message": "User deleted."
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
+
+
+@app.post("/api/admin/users/premium")
+def admin_make_premium(
+    email: str = Body(..., embed=True),
+    _: bool = Depends(require_admin)
+):
+    try:
+        expires = payments.premium_expiry_from_now()
+
+        users.set_premium(
+            email,
+            expires
+        )
+
+        return {
+            "success": True,
+            "message": "Premium activated."
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
+
+
+# ---------------------------------------------------------------------
+# Admin Revenue
+# ---------------------------------------------------------------------
+
+@app.get("/api/admin/revenue")
+def admin_revenue(_: bool = Depends(require_admin)):
+    return {
+        "success": True,
+        "analytics": payments.analytics()
+    }
+    # ---------------------------------------------------------------------
+# Admin Analytics
+# ---------------------------------------------------------------------
+
+@app.get("/api/admin/analytics")
+def admin_analytics(_: bool = Depends(require_admin)):
+    try:
+        return {
+            "success": True,
+            "analytics": payments.analytics()
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+
+# ---------------------------------------------------------------------
+# Admin Broadcast
+# ---------------------------------------------------------------------
+
+class BroadcastIn(BaseModel):
+    title: str = ""
+    message: str
+
+
+BROADCAST_CACHE = {
+    "title": "",
+    "message": "",
+    "created": None,
+}
+
+
+@app.post("/api/admin/broadcast")
+def admin_broadcast(
+    payload: BroadcastIn,
+    _: bool = Depends(require_admin)
+):
+    from datetime import datetime
+
+    BROADCAST_CACHE["title"] = payload.title
+    BROADCAST_CACHE["message"] = payload.message
+    BROADCAST_CACHE["created"] = datetime.utcnow().isoformat()
+
+    return {
+        "success": True,
+        "message": "Broadcast saved."
+    }
+
+
+@app.get("/api/admin/broadcast")
+def admin_get_broadcast(_: bool = Depends(require_admin)):
+    return {
+        "success": True,
+        "broadcast": BROADCAST_CACHE
+    }
+
+
+# ---------------------------------------------------------------------
+# Admin Settings
+# ---------------------------------------------------------------------
+
+@app.get("/api/admin/settings")
+def admin_settings(_: bool = Depends(require_admin)):
+    cfg = settings.get_all()
+
+    if cfg.get("groq_api_key"):
+        cfg["groq_api_key"] = "••••••••" + cfg["groq_api_key"][-4:]
+
+    if cfg.get("openai_api_key"):
+        cfg["openai_api_key"] = "••••••••" + cfg["openai_api_key"][-4:]
+
+    return {
+        "success": True,
+        "settings": cfg
+    }
+
+
+@app.post("/api/admin/settings")
+def admin_save_settings(
+    payload: SettingsIn,
+    _: bool = Depends(require_admin)
+):
+    updates = {
+        k: v
+        for k, v in payload.model_dump().items()
+        if v is not None and v != ""
+    }
+
+    if updates:
+        settings.set_many(**updates)
+
+    return {
+        "success": True,
+        "message": "Settings updated."
+    }
+
+
+# ---------------------------------------------------------------------
+# Admin System Info
+# ---------------------------------------------------------------------
+
+@app.get("/api/admin/system")
+def admin_system(_: bool = Depends(require_admin)):
+    import platform
+    import sys
+    import os
+
+    return {
+        "success": True,
+        "system": {
+            "python": sys.version,
+            "platform": platform.platform(),
+            "cwd": os.getcwd(),
+            "server": "Samchat AI",
+            "version": "1.0"
+        }
+    }
+    # ---------------------------------------------------------------------
+# Admin Search Users
+# ---------------------------------------------------------------------
+
+@app.get("/api/admin/users/search")
+def admin_search_users(
+    q: str = "",
+    _: bool = Depends(require_admin)
+):
+    users_list = users.list_users()
+
+    if q:
+        q = q.lower()
+
+        users_list = [
+            u for u in users_list
+            if q in u.get("email", "").lower()
+        ]
+
+    return {
+        "success": True,
+        "count": len(users_list),
+        "users": users_list
+    }
+
+
+# ---------------------------------------------------------------------
+# Admin Dashboard Refresh
+# ---------------------------------------------------------------------
+
+@app.get("/api/admin/dashboard/live")
+def admin_dashboard_live(_: bool = Depends(require_admin)):
+    analytics = payments.analytics()
+
+    return {
+        "success": True,
+        "stats": {
+            "total_users": users.total_users(),
+            "premium_users": users.premium_users(),
+            "free_users": users.free_users(),
+            "pending_payments": len(payments.list_pending_orders()),
+            "approved_orders": analytics["approved"],
+            "rejected_orders": analytics["rejected"],
+            "revenue": analytics["revenue"]
+        }
+    }
+
+
+# ---------------------------------------------------------------------
+# Admin Logs
+# ---------------------------------------------------------------------
+
+ADMIN_LOGS = []
+
+
+def admin_log(action, detail):
+    from datetime import datetime
+
+    ADMIN_LOGS.append({
+        "time": datetime.utcnow().isoformat(),
+        "action": action,
+        "detail": detail
+    })
+
+    if len(ADMIN_LOGS) > 300:
+        ADMIN_LOGS.pop(0)
+
+
+@app.get("/api/admin/logs")
+def admin_logs(_: bool = Depends(require_admin)):
+    return {
+        "success": True,
+        "logs": ADMIN_LOGS
+    }
+
+
+# ---------------------------------------------------------------------
+# Admin Backup
+# ---------------------------------------------------------------------
+
+@app.get("/api/admin/backup")
+def admin_backup(_: bool = Depends(require_admin)):
+    import os
+
+    files = []
+
+    if os.path.exists("data"):
+        for root, dirs, filenames in os.walk("data"):
+            for f in filenames:
+                files.append(os.path.join(root, f))
+
+    return {
+        "success": True,
+        "files": files,
+        "count": len(files)
+    }
+
+
+# ---------------------------------------------------------------------
+# Admin Ping
+# ---------------------------------------------------------------------
+
+@app.get("/api/admin/ping")
+def admin_ping(_: bool = Depends(require_admin)):
+    from datetime import datetime
+
+    return {
+        "success": True,
+        "server": "online",
+        "time": datetime.utcnow().isoformat()
+    }
+
+
+# ---------------------------------------------------------------------
+# Admin Version
+# ---------------------------------------------------------------------
+
+@app.get("/api/admin/version")
+def admin_version(_: bool = Depends(require_admin)):
+    return {
+        "success": True,
+        "name": "Samchat AI",
+        "version": "1.0",
+        "build": "Admin Patch v3"
+    }
+    # ---------------------------------------------------------------------
+# Admin User Details
+# ---------------------------------------------------------------------
+
+@app.get("/api/admin/user/{email:path}")
+def admin_user_details(
+    email: str,
+    _: bool = Depends(require_admin)
+):
+    user = users.get_user(email)
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    return {
+        "success": True,
+        "user": user
+    }
+
+
+# ---------------------------------------------------------------------
+# Admin Extend Premium
+# ---------------------------------------------------------------------
+
+@app.post("/api/admin/user/extend")
+def admin_extend_premium(
+    email: str = Body(..., embed=True),
+    days: int = Body(30, embed=True),
+    _: bool = Depends(require_admin)
+):
+    import time
+
+    user = users.get_user(email)
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    current = user.get("premium_expires")
+
+    if current and current > time.time():
+        expires = current + (days * 86400)
+    else:
+        expires = time.time() + (days * 86400)
+
+    users.set_premium(email, expires)
+
+    return {
+        "success": True,
+        "expires": expires
+    }
+
+
+# ---------------------------------------------------------------------
+# Admin Revoke Premium
+# ---------------------------------------------------------------------
+
+@app.post("/api/admin/user/revoke")
+def admin_revoke_premium(
+    email: str = Body(..., embed=True),
+    _: bool = Depends(require_admin)
+):
+    user = users.get_user(email)
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    user["premium"] = False
+    user["premium_expires"] = None
+
+    users.save_user(user)
+
+    return {
+        "success": True
+    }
+
+
+# ---------------------------------------------------------------------
+# Admin Statistics
+# ---------------------------------------------------------------------
+
+@app.get("/api/admin/stats")
+def admin_stats(
+    _: bool = Depends(require_admin)
+):
+
+    analytics = payments.analytics()
+
+    return {
+        "success": True,
+        "users": {
+            "total": users.total_users(),
+            "premium": users.premium_users(),
+            "free": users.free_users()
+        },
+        "payments": analytics
+    }
+
+
+# ---------------------------------------------------------------------
+# Admin Health
+# ---------------------------------------------------------------------
+
+@app.get("/api/admin/health")
+def admin_health(
+    _: bool = Depends(require_admin)
+):
+    import os
+    import platform
+    import time
+
+    return {
+        "success": True,
+        "uptime": int(time.time()),
+        "python": platform.python_version(),
+        "os": platform.system(),
+        "cwd": os.getcwd()
+    }
+
+
+# ---------------------------------------------------------------------
+# Admin Clear Logs
+# ---------------------------------------------------------------------
+
+@app.post("/api/admin/logs/clear")
+def admin_clear_logs(
+    _: bool = Depends(require_admin)
+):
+    ADMIN_LOGS.clear()
+
+    return {
+        "success": True,
+        "message": "Logs cleared."
+    }
+
+
+# ---------------------------------------------------------------------
+# Admin Reload
+# ---------------------------------------------------------------------
+
+@app.post("/api/admin/reload")
+def admin_reload(
+    _: bool = Depends(require_admin)
+):
+    reminders.rearm_pending()
+
+    return {
+        "success": True,
+        "message": "Server data reloaded."
+    }
+    
