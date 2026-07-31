@@ -200,3 +200,23 @@ def order_status(order_id: str):
     if not order:
         return None
     return order["status"]
+# ===== Add these functions at the END of payments.py =====
+
+def approved_orders():
+    return [o for o in _load_orders().values() if o["status"]=="approved"]
+
+def rejected_orders():
+    return [o for o in _load_orders().values() if o["status"]=="rejected"]
+
+def total_revenue():
+    return sum(o.get("amount",0) for o in approved_orders())
+
+def analytics():
+    orders=list(_load_orders().values())
+    return {
+        "total_orders":len(orders),
+        "approved":len(approved_orders()),
+        "rejected":len(rejected_orders()),
+        "pending":len(list_pending_orders()),
+        "revenue":total_revenue()
+    }
