@@ -287,3 +287,44 @@ def get_usage(email: str, daily_limit: int) -> dict:
         "daily_limit": daily_limit,
         "remaining": max(0, daily_limit - used),
     }
+# ===== Add these functions at the END of users.py =====
+
+import shutil
+
+def list_users():
+    users = _load_users()
+    result = []
+    for email, data in users.items():
+        item = dict(data)
+        item["email"] = email
+        result.append(item)
+    return result
+
+def total_users():
+    return len(_load_users())
+
+def premium_users():
+    return sum(1 for u in _load_users().values() if u.get("premium"))
+
+def free_users():
+    return total_users() - premium_users()
+
+def reset_usage(email):
+    record = get_user(email)
+    if not record:
+        raise ValueError("User not found")
+    record["usage_count"] = 0
+    record["usage_date"] = None
+    save_user(record)
+    return record
+
+def delete_user(email):
+    email = _normalize_email(email)
+    users = _load_users()
+    if email not in users:
+        raise ValueError("User not found")
+    del users[email]
+    _save_users(users)
+    folder = user_data_dir(email)
+    if os.path.exists(folder):
+        shutil.rmtree(folder, ignore_errors=True)
